@@ -127,7 +127,7 @@
 
 <div class="container">
     <div id="setupScreen" class="app-card" style="display: block;">
-        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.2.4</h3>
+        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.2.6</h3>
         <p id="statusMsg" style="text-align: center; color: #666;">Bereit für Import.</p>
         <label for="fileInput" id="uploadBtn" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI LADEN</label>
         <input type="file" id="fileInput" onchange="processFile()">
@@ -135,10 +135,10 @@
 
     <div id="appArea">
         <div class="app-card">
-            <input type="text" id="searchInput" placeholder="Suchen (Name, Ort...)" onkeyup="filterData()">
+            <input type="text" id="searchInput" placeholder="Suchen (Name, Ort, Beruf...)" onkeyup="filterData()">
             
             <select id="filterArbeitgeber" onchange="filterData()">
-                <option value="">Alle Arbeitgeber</option>
+                <option value="">Alle Betriebe</option>
             </select>
 
             <div id="statsDisplay" class="stats-bar">
@@ -154,7 +154,7 @@
 <div id="infoModal" class="modal">
     <h3>System-Information & Datenschutz</h3>
     <ul class="info-list">
-        <li><b>Funktionsumfang:</b> Volltextsuche, Filterung nach Arbeitgeber/Betrieb, Schnellwahl-Funktion und Erstellung von BCC-E-Mail-Listen.</li>
+        <li><b>Funktionsumfang:</b> Volltextsuche, Filterung nach Arbeitgeber, Schnellwahl-Funktion und Erstellung von BCC-E-Mail-Listen.</li>
         <li><b>Lokale Datenhoheit:</b> Diese App ist eine reine "Client-Side"-Anwendung. Alle geladenen Daten verbleiben auf Ihrem Gerät.</li>
         <li><b>Kein Datentransfer:</b> Es findet keine Übertragung an externe Server statt.</li>
         <li><b>Speicherung:</b> Die Daten liegen im LocalStorage Ihres Browsers.</li>
@@ -165,7 +165,7 @@
     </div>
     <p style="margin-top: 20px; font-size: 0.85rem; color: #666; line-height: 1.5; border-top: 1px solid #eee; padding-top: 10px;">
         Entwicklung: Marcus Hörnemann<br>
-        Version 1.2.4
+        Version 1.2.6
     </p>
     <button onclick="toggleModal('infoModal')" style="width:100%; padding:14px; background:var(--nahvg-blue); color:white; border-radius:8px; border:none; font-weight:bold; cursor:pointer;">Schließen</button>
 </div>
@@ -224,15 +224,12 @@
 
     function setupFilters() {
         const agSelect = document.getElementById('filterArbeitgeber');
-        // Extrahiere alle Arbeitgeber und entferne Duplikate/leere Werte
         const arbeitgeber = [...new Set(members.map(m => m['Arbeitgeber:']).filter(a => a))].sort();
         
-        agSelect.innerHTML = '<option value="">Alle Arbeitgeber</option>';
+        agSelect.innerHTML = '<option value="">Alle Betriebe</option>';
         arbeitgeber.forEach(ag => {
             const opt = document.createElement('option');
-            opt.value = ag;
-            opt.innerText = ag;
-            agSelect.appendChild(opt);
+            opt.value = ag; opt.innerText = ag; agSelect.appendChild(opt);
         });
     }
 
@@ -262,6 +259,7 @@
                     <div class="m-body">
                         <div class="m-title">${m['Vorname'] || ''} ${m['Nachname'] || ''}</div>
                         <div class="m-info">🏢 <b>${m['Arbeitgeber:'] || '-'}</b></div>
+                        <div class="m-info">🛠️ ${m['Beruf'] || '-'}</div>
                         <div class="m-info">🏠 ${m['Straße'] || '-'}<br><span class="address-sub">${m['PLZ'] || ''} ${m['Ort'] || ''}</span></div>
                         <div class="badge-container">
                             <span class="badge">🎂 ${m['Geburtsdatum'] || 'k.A.'}</span> 
