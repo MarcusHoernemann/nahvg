@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NahVG Mitglieder-Infosystem</title>
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwM2E2NiIvPjx0ZXh0IHg9IjIwIiB5PSI3NSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtc2l6ZT0iNzAiPk48L3RleHQ+PC9zdmc+">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwM2E2NiIvPjx0ZXh0IHg9IjIwIiB5PSI3NSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtc2l6ZT0iNzAiPk48L3RleHQ+PC9zdmc+">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NahVG Info">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#003a66">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        :root { 
+            --nahvg-blue: #003a66; 
+            --nahvg-yellow: #ffcc00; 
+            --success-green: #28a745;
+            --alert-red: #d93025;
+            --text-dark: #333;
+            --contact-gray: #eceff1;
+        }
+
+        body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--nahvg-blue); margin: 0; padding: 0; color: var(--text-dark); }
+
+        header {
+            background-color: var(--nahvg-blue);
+            color: white;
+            padding: 45px 15px 25px 15px;
+            text-align: center;
+            border-bottom: 4px solid var(--nahvg-yellow);
+            position: relative;
+        }
+
+        .info-trigger {
+            position: absolute; top: 45px; right: 20px;
+            background: var(--alert-red); color: white;
+            width: 25px; height: 25px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+            border: 2px solid white;
+            z-index: 10;
+        }
+
+        header h1 { margin: 0; font-size: 1.8rem; letter-spacing: 1px; }
+        header h2 { margin: 5px 0 0 0; font-size: 1.1rem; color: var(--nahvg-yellow); font-weight: normal; min-height: 1.3em; }
+        header div { margin-top: 5px; font-size: 0.9rem; opacity: 0.8; }
+
+        .container { padding: 15px; max-width: 1200px; margin: auto; }
+        
+        .app-card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
+            max-width: 600px; 
+            margin: 0 auto 15px auto; 
+        }
+
+        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; -webkit-appearance: none; }
+
+        .stats-bar {
+            background-color: var(--nahvg-yellow);
+            color: var(--nahvg-blue); 
+            padding: 12px;
+            border-radius: 8px; 
+            margin: 10px 0; 
+            font-weight: bold;
+            text-align: center; 
+            font-size: 1rem; 
+            border: 2px solid var(--nahvg-blue);
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px;
+        }
+
+        .filter-row { display: flex; gap: 10px; }
+        .filter-row select { flex: 1; }
+
+        .btn-email-all { 
+            background-color: var(--success-green); 
+            color: white; 
+            padding: 16px; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            width: 100%; 
+            cursor: pointer; 
+            display: none; 
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        #results {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .member-card { 
+            background: white; 
+            border-radius: 12px; 
+            border-left: 6px solid var(--nahvg-blue); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-sizing: border-box;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        @media (min-width: 900px) { .member-card { width: calc(33.333% - 10px); } }
+        @media (min-width: 600px) and (max-width: 899px) { .member-card { width: calc(50% - 8px); } }
+
+        .m-body { padding: 18px; flex-grow: 1; }
+        .m-title { font-weight: bold; color: var(--nahvg-blue); font-size: 1.2rem; margin-bottom: 5px; }
+        .m-info { font-size: 0.95rem; margin-top: 4px; color: #444; line-height: 1.3; }
+        
+        .address-sub { margin-left: 24px; display: block; }
+        .badge-container { margin-top: 12px; display: flex; gap: 10px; } 
+        .badge { background: #cfd8dc; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--nahvg-blue); font-weight: bold; }
+
+        .contact-links { 
+            background-color: var(--contact-gray); 
+            padding: 14px 18px; 
+            border-top: 1.5px solid #d1d9e0; 
+            display: flex; 
+            justify-content: space-around; 
+        }
+        .contact-links a, .contact-links span { 
+            color: var(--nahvg-blue); 
+            font-weight: bold; 
+            text-decoration: none; 
+            font-size: 0.95rem; 
+            cursor: pointer; 
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        #fileInput { display: none; }
+        #setupScreen, #appArea { display: none; }
+        
+        #toast { 
+            visibility: hidden; 
+            background: var(--nahvg-yellow); 
+            color: var(--nahvg-blue); 
+            text-align: center; 
+            padding: 16px 30px; 
+            position: fixed; 
+            bottom: 50px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            border-radius: 50px; 
+            z-index: 2000; 
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 3px solid var(--nahvg-blue);
+        }
+        #toast.show { visibility: visible; animation: popIn 0.3s ease-out; }
+
+        @keyframes popIn {
+            0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+            70% { transform: translateX(-50%) scale(1.1); opacity: 1; }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
+        
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 12px; width: 85%; max-width: 500px; box-shadow: 0 0 100px rgba(0,0,0,0.5); z-index: 1000; max-height: 80vh; overflow-y: auto; }
+        .modal h3 { margin-top: 0; color: var(--nahvg-blue); border-bottom: 2px solid var(--nahvg-yellow); padding-bottom: 10px; margin-bottom: 15px; }
+        .info-list { margin: 0 0 15px 0; padding: 0 0 0 20px; font-size: 0.9rem; line-height: 1.4; color: #333; }
+        .info-list li { margin-bottom: 8px; }
+        .legal-box { background: #f9f9f9; padding: 12px; border-radius: 6px; border-left: 4px solid var(--nahvg-blue); font-size: 0.85rem; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="info-trigger" onclick="toggleModal('infoModal')">i</div>
+    <h1>NahVG</h1>
+    <h2 id="ogNameDisplay">System wird geladen...</h2>
+    <div>Mitglieder-Infosystem</div>
+</header>
+
+<div class="container">
+    <div id="setupScreen" class="app-card">
+        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.1.0</h3>
+        <p id="statusMsg" style="text-align: center; color: #666;">Initialisiere System...</p>
+        <label for="fileInput" id="uploadBtn" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer; visibility: hidden;">📂 DATEI LADEN</label>
+        <input type="file" id="fileInput" accept=".xlsx" onchange="processFile()">
+    </div>
+
+    <div id="appArea">
+        <div class="app-card">
+            <input type="text" id="searchInput" placeholder="Suchen..." onkeyup="filterData()">
+            <div class="filter-row">
+                <select id="filterBetrieb" onchange="filterData()">
+                    <option value="">Alle Betriebe</option>
+                </select>
+                <select id="filterBeruf" onchange="filterData()">
+                    <option value="">Alle Berufe</option>
+                </select>
+            </div>
+            <div id="statsDisplay" class="stats-bar">
+                <span>👥</span> <span id="statsText">Berechne...</span>
+            </div>
+            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Mail an Auswahl schreiben</button>
+            <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; font-size:0.8rem; width:100%; cursor:pointer; margin-top:15px; opacity:0.7;">Ortsgruppe wechseln</button>
+        </div>
+        <div id="results"></div>
+    </div>
+</div>
+
+<div id="infoModal" class="modal">
+    <h3>System-Information</h3>
+    <p>NahVG Mitglieder-Infosystem (V 1.1.0)</p>
+    <div class="legal-box">
+        <b>Sicherheit:</b><br>
+        Obwohl diese Seite über das Internet aufgerufen wird, werden Ihre Excel-Daten niemals hochgeladen. Die Verarbeitung findet zu 100% nur auf Ihrem Handy statt.
+    </div>
+    <button onclick="toggleModal('infoModal')" style="width:100%; padding:14px; background:var(--nahvg-blue); color:white; border-radius:8px; margin-top:10px;">Schließen</button>
+</div>
+
+<div id="toast">Kopiert!</div>
+
+<script>
+let members = [];
+let currentFilteredEmails = [];
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+function checkXLSX() {
+    if (typeof XLSX !== 'undefined') {
+        document.getElementById('statusMsg').innerText = "System bereit.";
+        document.getElementById('uploadBtn').style.visibility = "visible";
+        return true;
+    }
+    return false;
+}
+
+window.onload = function() {
+    if (!checkXLSX()) {
+        setTimeout(() => {
+            if (!checkXLSX()) {
+                document.getElementById('statusMsg').innerHTML = "<b style='color:red;'>Bibliothek lädt...</b><br>Bitte Internetverbindung kurz prüfen.";
+            }
+        }, 2000);
+    }
+
+    const savedData = localStorage.getItem('gewerkschafts_daten');
+    const savedOG = localStorage.getItem('gewerkschafts_og_name');
+    if (savedData && savedData !== "[]") {
+        try {
+            members = JSON.parse(savedData);
+            if (savedOG) document.getElementById('ogNameDisplay').innerText = savedOG;
+            initApp();
+        } catch(e) { resetApp(); }
+    } else {
+        document.getElementById('setupScreen').style.display = 'block';
+        document.getElementById('ogNameDisplay').innerText = "Keine Daten geladen";
+    }
+};
+
+function processFile() {
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    if (!file) return;
+    let ogName = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { raw: false });
+            members = json.filter(m => m.Nachname && String(m.Nachname).trim() !== "");
+            members.sort((a, b) => String(a.Nachname).localeCompare(String(b.Nachname)));
+            localStorage.setItem('gewerkschafts_daten', JSON.stringify(members));
+            localStorage.setItem('gewerkschafts_og_name', ogName);
+            document.getElementById('ogNameDisplay').innerText = ogName;
+            initApp();
+        } catch (err) { alert("Excel-Fehler."); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function initApp() {
+    if (typeof XLSX === 'undefined') return;
+    const betriebe = [...new Set(members.map(m => m['Arbeitgeber:']).filter(Boolean))].sort();
+    const selBetrieb = document.getElementById('filterBetrieb');
+    selBetrieb.innerHTML = '<option value="">Alle Betriebe</option>';
+    betriebe.forEach(b => {
+        let opt = document.createElement('option');
+        opt.value = b; opt.innerText = b;
+        selBetrieb.appendChild(opt);
+    });
+
+    const berufe = [...new Set(members.map(m => m['Tätigkeit des Mitglieds:']).filter(Boolean))].sort();
+    const selBeruf = document.getElementById('filterBeruf');
+    selBeruf.innerHTML = '<option value="">Alle Berufe</option>';
+    berufe.forEach(b => {
+        let opt = document.createElement('option');
+        opt.value = b; opt.innerText = b;
+        selBeruf.appendChild(opt);
+    });
+
+    document.getElementById('setupScreen').style.display = 'none';
+    document.getElementById('appArea').style.display = 'block';
+    filterData();
+}
+
+function filterData() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const betrieb = document.getElementById('filterBetrieb').value;
+    const beruf = document.getElementById('filterBeruf').value;
+    const container = document.getElementById('results');
+    const statsText = document.getElementById('statsText');
+    const emailBtn = document.getElementById('emailAllBtn');
+    
+    container.innerHTML = "";
+    const filtered = members.filter(m => {
+        const matchesSearch = Object.values(m).some(v => String(v).toLowerCase().includes(search));
+        const matchesBetrieb = !betrieb || m['Arbeitgeber:'] === betrieb;
+        const matchesBeruf = !beruf || m['Tätigkeit des Mitglieds:'] === beruf;
+        return matchesSearch && matchesBetrieb && matchesBeruf;
+    });
+    
+    filtered.sort((a, b) => String(a.Nachname).localeCompare(String(b.Nachname)));
+    currentFilteredEmails = filtered.map(m => m['E-Mail (primär)']).filter(e => e && e.includes('@'));
+    statsText.innerText = `${filtered.length} Mitglieder`;
+    
+    emailBtn.style.display = currentFilteredEmails.length > 0 ? "block" : "none";
+    if(currentFilteredEmails.length > 0) emailBtn.innerText = `📧 Mail an Auswahl (${currentFilteredEmails.length})`;
+    
+    filtered.forEach(m => {
+        const tel = m['Mobil'] || m['Telefon'] || '';
+        container.innerHTML += `
+            <div class="member-card">
+                <div class="m-body">
+                    <div class="m-title">${m['Vorname'] || ''} ${m['Nachname'] || ''}</div>
+                    <div class="m-info">🏢 <b>${m['Arbeitgeber:'] || '-'}</b></div>
+                    <div class="m-info">🛠️ ${m['Tätigkeit des Mitglieds:'] || '-'}</div>
+                    <div class="m-info">🏠 ${m['Straße'] || '-'}<br><span class="address-sub">${m['PLZ'] || ''} ${m['Ort'] || ''}</span></div>
+                    <div class="badge-container">
+                        <span class="badge">🎂 ${m['Geburtsdatum'] || 'k.A.'}</span> 
+                        <span class="badge">📅 ${m['Eintritt'] || ''}</span>
+                    </div>
+                </div>
+                <div class="contact-links">
+                    ${tel ? `<a href="tel:${tel}">📞 Anrufen</a>` : '<span style="opacity:0.3;">📞 k.A.</span>'}
+                    ${m['E-Mail (primär)'] ? `<span onclick="handleMail('${m['E-Mail (primär)']}')">✉️ Mail</span>` : '<span style="opacity:0.3;">✉️ k.A.</span>'}
+                </div>
+            </div>`;
+    });
+}
+
+function handleMail(email) {
+    if (isMobile) { window.location.href = `mailto:${email}`; } 
+    else { copyToClipboard(email); showToast("E-Mail kopiert!"); }
+}
+
+function sendBulkEmail() {
+    const bcc = currentFilteredEmails.join(',');
+    window.location.href = `mailto:?bcc=${bcc}&subject=NahVG Info`;
+    copyToClipboard(bcc);
+    showToast("BCC-Liste kopiert!");
+}
+
+function toggleModal(id) {
+    const m = document.getElementById(id);
+    m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+}
+
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.innerText = "✅ " + msg;
+    t.className = "show";
+    setTimeout(() => { t.className = ""; }, 2500);
+}
+
+function copyToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+}
+
+function resetApp() {
+    if(confirm("Daten löschen?")) {
+        localStorage.clear();
+        location.reload();
+    }
+}
+</script>
+</body>
+</html>
