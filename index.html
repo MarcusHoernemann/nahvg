@@ -110,9 +110,11 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 3px solid var(--nahvg-blue);
         }
         #toast.show { visibility: visible; }
+
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 550px; box-shadow: 0 0 100px rgba(0,0,0,0.5); z-index: 1000; max-height: 85vh; overflow-y: auto; }
         .info-list { margin: 0 0 15px 0; padding: 0 0 0 20px; font-size: 0.9rem; line-height: 1.4; color: #333; }
         .info-list li { margin-bottom: 10px; }
+        .legal-box { background: #f4f7f9; padding: 15px; border-radius: 8px; border-left: 5px solid var(--nahvg-blue); font-size: 0.85rem; margin-top: 10px; color: #2c3e50; }
     </style>
 </head>
 <body>
@@ -126,7 +128,7 @@
 
 <div class="container">
     <div id="setupScreen" class="app-card" style="display: block;">
-        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.2.8</h3>
+        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.2.9</h3>
         <p id="statusMsg" style="text-align: center; color: #666;">Bereit für Import.</p>
         <label for="fileInput" id="uploadBtn" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI LADEN</label>
         <input type="file" id="fileInput">
@@ -151,11 +153,21 @@
 </div>
 
 <div id="infoModal" class="modal">
-    <h3>Information</h3>
+    <h3>System-Information & Datenschutz</h3>
     <ul class="info-list">
-        <li>Lokale Datenverarbeitung ohne Cloud.</li>
-        <li>BCC-Mail Funktion für Auswahl.</li>
+        <li><b>Funktionsumfang:</b> Volltextsuche, Filterung nach Arbeitgeber, Schnellwahl-Funktion und Erstellung von BCC-E-Mail-Listen für Gruppenbenachrichtigungen.</li>
+        <li><b>Lokale Datenhoheit:</b> Diese App ist eine reine "Client-Side"-Anwendung. Das bedeutet: Alle von Ihnen geladenen Excel-Daten verbleiben physisch auf Ihrem Endgerät (Smartphone/Rechner).</li>
+        <li><b>Kein Datentransfer:</b> Es findet <u>keine Übertragung</u> der Mitgliederdaten an externe Server, Cloud-Dienste oder GitHub statt. Das Internet wird lediglich beim Erststart zum Laden des Programmgerüsts benötigt.</li>
+        <li><b>Speicherung:</b> Die Daten werden im geschützten Bereich Ihres Browsers (LocalStorage) abgelegt. Durch Klick auf "Ortsgruppe wechseln" werden alle Daten restlos vom Gerät entfernt.</li>
     </ul>
+    <div class="legal-box">
+        <b>Datenschutz-Garantie:</b><br>
+        Der Schutz personenbezogener Gewerkschaftsdaten hat höchste Priorität. Die technische Architektur dieser Lösung stellt sicher, dass zu jedem Zeitpunkt die volle Kontrolle über die Daten beim autorisierten Nutzer liegt. Die biometrische Sicherung Ihres Endgeräts bietet den notwendigen Schutz vor unbefugtem Zugriff.
+    </div>
+    <p style="margin-top: 20px; font-size: 0.85rem; color: #666; line-height: 1.5; border-top: 1px solid #eee; padding-top: 10px;">
+        Entwicklung: Marcus Hörnemann<br>
+        Version 1.2.9
+    </p>
     <button onclick="toggleModal('infoModal')" style="width:100%; padding:14px; background:var(--nahvg-blue); color:white; border-radius:8px; border:none; font-weight:bold; cursor:pointer;">Schließen</button>
 </div>
 
@@ -165,49 +177,37 @@
     let members = [];
     let currentFilteredEmails = [];
 
-    // Initialisierung
     window.onload = function() {
         const savedData = localStorage.getItem('gewerkschafts_daten');
         const savedOG = localStorage.getItem('gewerkschafts_og_name');
         if (savedData && savedData !== "[]") {
             try {
                 members = JSON.parse(savedData);
-                document.getElementById('ogNameDisplay').innerText = savedOG || "Meine Gruppe";
+                document.getElementById('ogNameDisplay').innerText = savedOG || "NahVG Info";
                 showApp();
-            } catch(e) { console.error("Datenfehler beim Laden", e); }
+            } catch(e) {}
         }
-        
-        // Event Listener für File Input
         document.getElementById('fileInput').addEventListener('change', processFile, false);
     };
 
     function processFile(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         let ogName = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
         const reader = new FileReader();
-
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet, { raw: false });
-
                 members = json.filter(m => (m.Nachname || m['Nachname']) && String(m.Nachname || m['Nachname']).trim() !== "");
                 members.sort((a, b) => String(a.Nachname || "").localeCompare(String(b.Nachname || "")));
-                
                 localStorage.setItem('gewerkschafts_daten', JSON.stringify(members));
                 localStorage.setItem('gewerkschafts_og_name', ogName);
-                
                 document.getElementById('ogNameDisplay').innerText = ogName;
                 showApp();
-            } catch (err) { 
-                console.error(err);
-                alert("Fehler beim Verarbeiten der Excel-Datei."); 
-            }
+            } catch (err) { alert("Datei-Fehler."); }
         };
         reader.readAsArrayBuffer(file);
     }
@@ -222,7 +222,6 @@
     function setupFilters() {
         const agSelect = document.getElementById('filterArbeitgeber');
         const arbeitgeber = [...new Set(members.map(m => m['Arbeitgeber:'] || m['Arbeitgeber']).filter(a => a))].sort();
-        
         agSelect.innerHTML = '<option value="">Alle Betriebe</option>';
         arbeitgeber.forEach(ag => {
             const opt = document.createElement('option');
@@ -236,32 +235,25 @@
         const container = document.getElementById('results');
         const statsText = document.getElementById('statsText');
         const emailBtn = document.getElementById('emailAllBtn');
-        
         container.innerHTML = "";
-
         const filtered = members.filter(m => {
             const searchSource = Object.values(m).join(' ').toLowerCase();
             const matchesSearch = searchSource.includes(search);
             const currentAg = m['Arbeitgeber:'] || m['Arbeitgeber'] || '';
-            const matchesAg = agFilter === "" || currentAg === agFilter;
-            return matchesSearch && matchesAg;
+            return matchesSearch && (agFilter === "" || currentAg === agFilter);
         });
-
         currentFilteredEmails = filtered.map(m => m['E-Mail (primär)'] || m['E-Mail'] || m['Email']).filter(e => e && e.includes('@'));
         statsText.innerText = `${filtered.length} Mitglieder`;
         emailBtn.style.display = currentFilteredEmails.length > 0 ? "block" : "none";
-
         filtered.forEach(m => {
             const tel = m['Mobil'] || m['Telefon'] || '';
             const tätigkeit = m['Tätigkeit des Mitglieds:'] || m['Tätigkeit'] || m['Beruf'] || '-';
             const email = m['E-Mail (primär)'] || m['E-Mail'] || m['Email'] || '';
-            const ag = m['Arbeitgeber:'] || m['Arbeitgeber'] || '-';
-
             container.innerHTML += `
                 <div class="member-card">
                     <div class="m-body">
                         <div class="m-title">${m['Vorname'] || ''} ${m['Nachname'] || ''}</div>
-                        <div class="m-info">🏢 <b>${ag}</b></div>
+                        <div class="m-info">🏢 <b>${m['Arbeitgeber:'] || m['Arbeitgeber'] || '-'}</b></div>
                         <div class="m-info">🛠️ ${tätigkeit}</div>
                         <div class="m-info">🏠 ${m['Straße'] || '-'}<br><span class="address-sub">${m['PLZ'] || ''} ${m['Ort'] || ''}</span></div>
                         <div class="badge-container">
@@ -309,7 +301,7 @@
     }
 
     function resetApp() {
-        if(confirm("Daten löschen und neue Datei laden?")) {
+        if(confirm("Daten löschen?")) {
             localStorage.clear();
             location.reload();
         }
