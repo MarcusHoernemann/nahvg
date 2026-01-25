@@ -127,7 +127,7 @@
 
 <div class="container">
     <div id="setupScreen" class="app-card" style="display: block;">
-        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.2.6</h3>
+        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.2.7</h3>
         <p id="statusMsg" style="text-align: center; color: #666;">Bereit für Import.</p>
         <label for="fileInput" id="uploadBtn" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI LADEN</label>
         <input type="file" id="fileInput" onchange="processFile()">
@@ -135,7 +135,7 @@
 
     <div id="appArea">
         <div class="app-card">
-            <input type="text" id="searchInput" placeholder="Suchen (Name, Ort, Beruf...)" onkeyup="filterData()">
+            <input type="text" id="searchInput" placeholder="Suchen (Name, Ort, Tätigkeit...)" onkeyup="filterData()">
             
             <select id="filterArbeitgeber" onchange="filterData()">
                 <option value="">Alle Betriebe</option>
@@ -155,17 +155,13 @@
     <h3>System-Information & Datenschutz</h3>
     <ul class="info-list">
         <li><b>Funktionsumfang:</b> Volltextsuche, Filterung nach Arbeitgeber, Schnellwahl-Funktion und Erstellung von BCC-E-Mail-Listen.</li>
-        <li><b>Lokale Datenhoheit:</b> Diese App ist eine reine "Client-Side"-Anwendung. Alle geladenen Daten verbleiben auf Ihrem Gerät.</li>
-        <li><b>Kein Datentransfer:</b> Es findet keine Übertragung an externe Server statt.</li>
-        <li><b>Speicherung:</b> Die Daten liegen im LocalStorage Ihres Browsers.</li>
+        <li><b>Lokale Datenhoheit:</b> Alle geladenen Daten verbleiben auf Ihrem Gerät.</li>
+        <li><b>Kein Datentransfer:</b> Keine Übertragung an externe Server.</li>
+        <li><b>Speicherung:</b> Daten liegen im LocalStorage Ihres Browsers.</li>
     </ul>
-    <div class="legal-box">
-        <b>Datenschutz-Garantie:</b><br>
-        Der Schutz personenbezogener Gewerkschaftsdaten hat höchste Priorität. Die technische Architektur stellt sicher, dass die Kontrolle beim autorisierten Nutzer liegt.
-    </div>
     <p style="margin-top: 20px; font-size: 0.85rem; color: #666; line-height: 1.5; border-top: 1px solid #eee; padding-top: 10px;">
         Entwicklung: Marcus Hörnemann<br>
-        Version 1.2.6
+        Version 1.2.7
     </p>
     <button onclick="toggleModal('infoModal')" style="width:100%; padding:14px; background:var(--nahvg-blue); color:white; border-radius:8px; border:none; font-weight:bold; cursor:pointer;">Schließen</button>
 </div>
@@ -244,73 +240,3 @@
 
         const filtered = members.filter(m => {
             const matchesSearch = Object.values(m).some(v => String(v).toLowerCase().includes(search));
-            const matchesAg = agFilter === "" || m['Arbeitgeber:'] === agFilter;
-            return matchesSearch && matchesAg;
-        });
-
-        currentFilteredEmails = filtered.map(m => m['E-Mail (primär)']).filter(e => e && e.includes('@'));
-        statsText.innerText = `${filtered.length} Mitglieder`;
-        emailBtn.style.display = currentFilteredEmails.length > 0 ? "block" : "none";
-
-        filtered.forEach(m => {
-            const tel = m['Mobil'] || m['Telefon'] || '';
-            container.innerHTML += `
-                <div class="member-card">
-                    <div class="m-body">
-                        <div class="m-title">${m['Vorname'] || ''} ${m['Nachname'] || ''}</div>
-                        <div class="m-info">🏢 <b>${m['Arbeitgeber:'] || '-'}</b></div>
-                        <div class="m-info">🛠️ ${m['Beruf'] || '-'}</div>
-                        <div class="m-info">🏠 ${m['Straße'] || '-'}<br><span class="address-sub">${m['PLZ'] || ''} ${m['Ort'] || ''}</span></div>
-                        <div class="badge-container">
-                            <span class="badge">🎂 ${m['Geburtsdatum'] || 'k.A.'}</span> 
-                            <span class="badge">📅 ${m['Eintritt'] || ''}</span>
-                        </div>
-                    </div>
-                    <div class="contact-links">
-                        ${tel ? `<a href="tel:${tel}">📞 Anrufen</a>` : '<span>📞 k.A.</span>'}
-                        ${m['E-Mail (primär)'] ? `<span onclick="handleMail('${m['E-Mail (primär)']}')">✉️ Mail</span>` : '<span>✉️ k.A.</span>'}
-                    </div>
-                </div>`;
-        });
-    }
-
-    function handleMail(email) {
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) { window.location.href = `mailto:${email}`; } 
-        else { copyToClipboard(email); showToast(); }
-    }
-
-    function sendBulkEmail() {
-        const bcc = currentFilteredEmails.join(',');
-        window.location.href = `mailto:?bcc=${bcc}&subject=NahVG Info`;
-    }
-
-    function toggleModal(id) {
-        const m = document.getElementById(id);
-        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
-    }
-
-    function showToast() {
-        const t = document.getElementById("toast");
-        t.className = "show";
-        setTimeout(() => { t.className = ""; }, 2500);
-    }
-
-    function copyToClipboard(text) {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-    }
-
-    function resetApp() {
-        if(confirm("Daten löschen?")) {
-            localStorage.clear();
-            location.reload();
-        }
-    }
-</script>
-</body>
-</html>
