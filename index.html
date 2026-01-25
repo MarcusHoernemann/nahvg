@@ -60,7 +60,7 @@
             margin: 0 auto 15px auto; 
         }
 
-        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; background-color: #fff; }
 
         .stats-bar {
             background-color: var(--nahvg-yellow);
@@ -127,7 +127,7 @@
 
 <div class="container">
     <div id="setupScreen" class="app-card" style="display: block;">
-        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.2.3</h3>
+        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.2.4</h3>
         <p id="statusMsg" style="text-align: center; color: #666;">Bereit für Import.</p>
         <label for="fileInput" id="uploadBtn" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI LADEN</label>
         <input type="file" id="fileInput" onchange="processFile()">
@@ -135,7 +135,12 @@
 
     <div id="appArea">
         <div class="app-card">
-            <input type="text" id="searchInput" placeholder="Suchen..." onkeyup="filterData()">
+            <input type="text" id="searchInput" placeholder="Suchen (Name, Ort...)" onkeyup="filterData()">
+            
+            <select id="filterArbeitgeber" onchange="filterData()">
+                <option value="">Alle Arbeitgeber</option>
+            </select>
+
             <div id="statsDisplay" class="stats-bar">
                 <span>👥</span> <span id="statsText">Berechne...</span>
             </div>
@@ -149,18 +154,18 @@
 <div id="infoModal" class="modal">
     <h3>System-Information & Datenschutz</h3>
     <ul class="info-list">
-        <li><b>Funktionsumfang:</b> Volltextsuche, Filterung nach Arbeitgeber/Beruf, Schnellwahl-Funktion und Erstellung von BCC-E-Mail-Listen für Gruppenbenachrichtigungen.</li>
-        <li><b>Lokale Datenhoheit:</b> Diese App ist eine reine "Client-Side"-Anwendung. Das bedeutet: Alle von Ihnen geladenen Excel-Daten verbleiben physisch auf Ihrem Endgerät (Smartphone/Rechner).</li>
-        <li><b>Kein Datentransfer:</b> Es findet <u>keine Übertragung</u> der Mitgliederdaten an externe Server, Cloud-Dienste oder GitHub statt. Das Internet wird lediglich beim Erststart zum Laden des Programmgerüsts benötigt.</li>
-        <li><b>Speicherung:</b> Die Daten werden im geschützten Bereich Ihres Browsers (LocalStorage) abgelegt. Durch Klick auf "Ortsgruppe wechseln" oder Löschen der App werden alle Daten restlos vom Gerät entfernt.</li>
+        <li><b>Funktionsumfang:</b> Volltextsuche, Filterung nach Arbeitgeber/Betrieb, Schnellwahl-Funktion und Erstellung von BCC-E-Mail-Listen.</li>
+        <li><b>Lokale Datenhoheit:</b> Diese App ist eine reine "Client-Side"-Anwendung. Alle geladenen Daten verbleiben auf Ihrem Gerät.</li>
+        <li><b>Kein Datentransfer:</b> Es findet keine Übertragung an externe Server statt.</li>
+        <li><b>Speicherung:</b> Die Daten liegen im LocalStorage Ihres Browsers.</li>
     </ul>
     <div class="legal-box">
         <b>Datenschutz-Garantie:</b><br>
-        Der Schutz personenbezogener Gewerkschaftsdaten hat höchste Priorität. Die technische Architektur dieser Lösung stellt sicher, dass zu jedem Zeitpunkt die volle Kontrolle über die Daten beim autorisierten Nutzer liegt. Die biometrische Sicherung Ihres Endgeräts bietet den notwendigen Schutz vor unbefugtem Zugriff.
+        Der Schutz personenbezogener Gewerkschaftsdaten hat höchste Priorität. Die technische Architektur stellt sicher, dass die Kontrolle beim autorisierten Nutzer liegt.
     </div>
     <p style="margin-top: 20px; font-size: 0.85rem; color: #666; line-height: 1.5; border-top: 1px solid #eee; padding-top: 10px;">
         Entwicklung: Marcus Hörnemann<br>
-        Version 1.2.3
+        Version 1.2.4
     </p>
     <button onclick="toggleModal('infoModal')" style="width:100%; padding:14px; background:var(--nahvg-blue); color:white; border-radius:8px; border:none; font-weight:bold; cursor:pointer;">Schließen</button>
 </div>
@@ -181,6 +186,7 @@
                     if (savedOG) document.getElementById('ogNameDisplay').innerText = savedOG;
                     document.getElementById('setupScreen').style.display = 'none';
                     document.getElementById('appArea').style.display = 'block';
+                    setupFilters();
                     filterData();
                 } catch(e) {}
             }
@@ -201,27 +207,54 @@
                 const json = XLSX.utils.sheet_to_json(sheet, { raw: false });
                 members = json.filter(m => m.Nachname && String(m.Nachname).trim() !== "");
                 members.sort((a, b) => String(a.Nachname).localeCompare(String(b.Nachname)));
+                
                 localStorage.setItem('gewerkschafts_daten', JSON.stringify(members));
                 localStorage.setItem('gewerkschafts_og_name', ogName);
+                
                 document.getElementById('ogNameDisplay').innerText = ogName;
                 document.getElementById('setupScreen').style.display = 'none';
                 document.getElementById('appArea').style.display = 'block';
+                
+                setupFilters();
                 filterData();
             } catch (err) { alert("Datei-Fehler."); }
         };
         reader.readAsArrayBuffer(file);
     }
 
+    function setupFilters() {
+        const agSelect = document.getElementById('filterArbeitgeber');
+        // Extrahiere alle Arbeitgeber und entferne Duplikate/leere Werte
+        const arbeitgeber = [...new Set(members.map(m => m['Arbeitgeber:']).filter(a => a))].sort();
+        
+        agSelect.innerHTML = '<option value="">Alle Arbeitgeber</option>';
+        arbeitgeber.forEach(ag => {
+            const opt = document.createElement('option');
+            opt.value = ag;
+            opt.innerText = ag;
+            agSelect.appendChild(opt);
+        });
+    }
+
     function filterData() {
         const search = document.getElementById('searchInput').value.toLowerCase();
+        const agFilter = document.getElementById('filterArbeitgeber').value;
         const container = document.getElementById('results');
         const statsText = document.getElementById('statsText');
         const emailBtn = document.getElementById('emailAllBtn');
+        
         container.innerHTML = "";
-        const filtered = members.filter(m => Object.values(m).some(v => String(v).toLowerCase().includes(search)));
+
+        const filtered = members.filter(m => {
+            const matchesSearch = Object.values(m).some(v => String(v).toLowerCase().includes(search));
+            const matchesAg = agFilter === "" || m['Arbeitgeber:'] === agFilter;
+            return matchesSearch && matchesAg;
+        });
+
         currentFilteredEmails = filtered.map(m => m['E-Mail (primär)']).filter(e => e && e.includes('@'));
         statsText.innerText = `${filtered.length} Mitglieder`;
         emailBtn.style.display = currentFilteredEmails.length > 0 ? "block" : "none";
+
         filtered.forEach(m => {
             const tel = m['Mobil'] || m['Telefon'] || '';
             container.innerHTML += `
