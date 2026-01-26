@@ -104,10 +104,11 @@
         #setupScreen, #appArea { display: none; }
         
         #toast { 
-            visibility: hidden; background: var(--nahvg-yellow); color: var(--nahvg-blue); 
+            visibility: hidden; background: var(--success-green); color: white; 
             text-align: center; padding: 16px 30px; position: fixed; bottom: 50px; left: 50%; 
             transform: translateX(-50%); border-radius: 50px; z-index: 2000; font-weight: bold;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 3px solid var(--nahvg-blue);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 2px solid white;
+            min-width: 200px;
         }
         #toast.show { visibility: visible; }
 
@@ -270,13 +271,22 @@
     }
 
     function handleMail(email) {
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) { window.location.href = `mailto:${email}`; } 
-        else { copyToClipboard(email); showToast(); }
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) { 
+            window.location.href = `mailto:${email}`; 
+        } else { 
+            copyToClipboard(email); 
+            showToast("✅ E-Mail kopiert!"); 
+        }
     }
 
     function sendBulkEmail() {
-        const bcc = currentFilteredEmails.join(',');
-        window.location.href = `mailto:?bcc=${bcc}&subject=NahVG Info`;
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            window.location.href = `mailto:?bcc=${currentFilteredEmails.join(',')}&subject=NahVG Info`;
+        } else {
+            const bcc = currentFilteredEmails.join('; ');
+            copyToClipboard(bcc);
+            showToast(`✅ ${currentFilteredEmails.length} Adressen kopiert!`, 5000);
+        }
     }
 
     function toggleModal(id) {
@@ -284,17 +294,17 @@
         m.style.display = (m.style.display === 'block') ? 'none' : 'block';
     }
 
-    function showToast() {
+    function showToast(message, duration = 2500) {
         const t = document.getElementById("toast");
+        t.innerText = message;
         t.className = "show";
-        setTimeout(() => { t.className = ""; }, 2500);
+        setTimeout(() => { t.className = ""; }, duration);
     }
 
     function copyToClipboard(text) {
         const textArea = document.createElement("textarea");
         textArea.value = text;
         document.body.appendChild(textArea);
-        textArea.focus();
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
