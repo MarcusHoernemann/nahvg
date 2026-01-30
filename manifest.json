@@ -1,0 +1,18 @@
+{
+  "short_name": "NahVG Info",
+  "name": "NahVG Mitglieder-Infosystem",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#003a66",
+  "theme_color": "#003a66",
+  "lang": "de-DE",
+  "scope": "./"
+}
