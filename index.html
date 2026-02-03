@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>NahVG Mitglieder-Infosystem</title>
     
+    <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
-
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="NahVG Info">
@@ -114,6 +114,11 @@
         .info-list { margin: 0 0 15px 0; padding: 0 0 0 20px; font-size: 0.9rem; line-height: 1.4; color: #333; }
         .info-list li { margin-bottom: 10px; }
         .legal-box { background: #f4f7f9; padding: 15px; border-radius: 8px; border-left: 5px solid var(--nahvg-blue); font-size: 0.85rem; margin-top: 10px; color: #2c3e50; }
+        
+        #installBtn {
+            display: none; background: white; color: var(--nahvg-blue); border: 2px solid var(--nahvg-blue);
+            padding: 10px; border-radius: 8px; margin-top: 10px; font-weight: bold; width: 100%; cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -127,24 +132,23 @@
 
 <div class="container">
     <div id="setupScreen" class="app-card" style="display: block;">
-        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.2.9 (Offline)</h3>
+        <h3 style="text-align: center; color: var(--nahvg-blue);">App-Installation</h3>
         <p id="statusMsg" style="text-align: center; color: #666;">Bereit für Import.</p>
         <label for="fileInput" id="uploadBtn" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI LADEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
+        <button id="installBtn">📲 ALS APP INSTALLIEREN</button>
     </div>
 
     <div id="appArea">
         <div class="app-card">
             <input type="text" id="searchInput" placeholder="Suchen (Name, Ort, Tätigkeit...)" onkeyup="filterData()">
-            
             <select id="filterArbeitgeber" onchange="filterData()">
                 <option value="">Alle Betriebe</option>
             </select>
-
             <div id="statsDisplay" class="stats-bar">
                 <span>👥</span> <span id="statsText">Berechne...</span>
             </div>
-            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Mail schreiben</button>
+            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Sammel-Mail schreiben</button>
             <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; font-size:0.8rem; width:100%; cursor:pointer; margin-top:15px; opacity:0.7;">Ortsgruppe wechseln</button>
         </div>
         <div id="results"></div>
@@ -152,32 +156,51 @@
 </div>
 
 <div id="infoModal" class="modal">
-    <h3>System-Information & Datenschutz</h3>
+    <h3>System & Datenschutz</h3>
     <ul class="info-list">
-        <li><b>Offline-Modus:</b> Diese Datei enthält alle Programm-Bibliotheken. Es wird kein Internet zum Betrieb benötigt.</li>
-        <li><b>Lokale Datenhoheit:</b> Alle geladenen Daten verbleiben ausschließlich in Ihrem Browser-Speicher.</li>
-        <li><b>Kein Datentransfer:</b> Es findet keine Übertragung an externe Server statt.</li>
+        <li><b>Installation:</b> Diese App kann über das Browser-Menü (oder den Button oben) dauerhaft installiert werden.</li>
+        <li><b>Offline:</b> Funktioniert nach dem ersten Laden auch ohne Netz.</li>
+        <li><b>Daten:</b> Keine Übertragung. Alles bleibt lokal im Browser-Speicher.</li>
     </ul>
-    <div class="legal-box">
-        <b>Datenschutz-Garantie:</b><br>
-        Technische Architektur stellt sicher, dass Gewerkschaftsdaten privat bleiben.
-    </div>
-    <p style="margin-top: 20px; font-size: 0.85rem; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
-        Entwicklung: Marcus Hörnemann | Version 1.2.9
-    </p>
     <button onclick="toggleModal('infoModal')" style="width:100%; padding:14px; background:var(--nahvg-blue); color:white; border-radius:8px; border:none; font-weight:bold; cursor:pointer;">Schließen</button>
 </div>
 
 <div id="toast">✅ Kopiert!</div>
 
 <script>
-    /* WICHTIG: Kopiere den Inhalt der Datei xlsx.full.min.js hier hinein.
-       Du findest den Code unter: https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
+    /* WICHTIG: Füge hier den Code von https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js ein 
     */
 </script>
+
 <script>
     let members = [];
     let currentFilteredEmails = [];
+    let deferredPrompt;
+
+    // PWA Installation Logik
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('installBtn').style.display = 'block';
+    });
+
+    document.getElementById('installBtn').addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                document.getElementById('installBtn').style.display = 'none';
+            }
+            deferredPrompt = null;
+        }
+    });
+
+    // Service Worker Registrierung
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+    }
 
     window.onload = function() {
         const savedData = localStorage.getItem('gewerkschafts_daten');
@@ -200,7 +223,6 @@
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
-                // XLSX ist hier global durch die eingebettete Bibliothek verfügbar
                 const workbook = XLSX.read(data, {type: 'array'});
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet, { raw: false });
@@ -210,7 +232,7 @@
                 localStorage.setItem('gewerkschafts_og_name', ogName);
                 document.getElementById('ogNameDisplay').innerText = ogName;
                 showApp();
-            } catch (err) { alert("Fehler beim Lesen der Excel-Datei."); }
+            } catch (err) { alert("Fehler beim Verarbeiten der Excel."); }
         };
         reader.readAsArrayBuffer(file);
     }
@@ -236,8 +258,6 @@
         const search = document.getElementById('searchInput').value.toLowerCase();
         const agFilter = document.getElementById('filterArbeitgeber').value;
         const container = document.getElementById('results');
-        const statsText = document.getElementById('statsText');
-        const emailBtn = document.getElementById('emailAllBtn');
         container.innerHTML = "";
         const filtered = members.filter(m => {
             const searchSource = Object.values(m).join(' ').toLowerCase();
@@ -246,49 +266,46 @@
             return matchesSearch && (agFilter === "" || currentAg === agFilter);
         });
         currentFilteredEmails = filtered.map(m => m['E-Mail (primär)'] || m['E-Mail'] || m['Email']).filter(e => e && e.includes('@'));
-        statsText.innerText = `${filtered.length} Mitglieder`;
-        emailBtn.style.display = currentFilteredEmails.length > 0 ? "block" : "none";
+        document.getElementById('statsText').innerText = `${filtered.length} Mitglieder`;
+        document.getElementById('emailAllBtn').style.display = currentFilteredEmails.length > 0 ? "block" : "none";
+        
         filtered.forEach(m => {
             const tel = m['Mobil'] || m['Telefon'] || '';
-            const tätigkeit = m['Tätigkeit des Mitglieds:'] || m['Tätigkeit'] || m['Beruf'] || '-';
             const email = m['E-Mail (primär)'] || m['E-Mail'] || m['Email'] || '';
             container.innerHTML += `
                 <div class="member-card">
                     <div class="m-body">
                         <div class="m-title">${m['Vorname'] || ''} ${m['Nachname'] || ''}</div>
                         <div class="m-info">🏢 <b>${m['Arbeitgeber:'] || m['Arbeitgeber'] || '-'}</b></div>
-                        <div class="m-info">🛠️ ${tätigkeit}</div>
-                        <div class="m-info">🏠 ${m['Straße'] || '-'}<br><span class="address-sub">${m['PLZ'] || ''} ${m['Ort'] || ''}</span></div>
-                        <div class="badge-container">
-                            <span class="badge">🎂 ${m['Geburtsdatum'] || 'k.A.'}</span> 
-                            <span class="badge">📅 ${m['Eintritt'] || ''}</span>
-                        </div>
+                        <div class="m-info">🏠 ${m['Straße'] || ''}, ${m['PLZ'] || ''} ${m['Ort'] || ''}</div>
                     </div>
                     <div class="contact-links">
                         ${tel ? `<a href="tel:${tel}">📞 Anrufen</a>` : '<span>📞 k.A.</span>'}
-                        ${email ? `<span onclick="handleMail('${email}')">✉️ Mail</span>` : '<span>✉️ k.A.</span>'}
+                        ${email ? `<span onclick="handleMail('${email}')">✉️ Kopieren</span>` : '<span>✉️ k.A.</span>'}
                     </div>
                 </div>`;
         });
     }
 
     function handleMail(email) {
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) { 
-            window.location.href = `mailto:${email}`; 
-        } else { 
-            copyToClipboard(email); 
-            showToast("✅ E-Mail kopiert!"); 
-        }
+        copyToClipboard(email); 
+        showToast("✅ E-Mail kopiert!"); 
     }
 
     function sendBulkEmail() {
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-            window.location.href = `mailto:?bcc=${currentFilteredEmails.join(',')}&subject=NahVG Info`;
-        } else {
-            const bcc = currentFilteredEmails.join('; ');
-            copyToClipboard(bcc);
-            showToast(`✅ ${currentFilteredEmails.length} Adressen kopiert!`, 5000);
-        }
+        const bcc = currentFilteredEmails.join('; ');
+        copyToClipboard(bcc);
+        showToast(`✅ ${currentFilteredEmails.length} Adressen kopiert!`, 4000);
+        window.location.href = `mailto:?bcc=${currentFilteredEmails.join(',')}`;
+    }
+
+    function copyToClipboard(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
     }
 
     function toggleModal(id) {
@@ -303,17 +320,8 @@
         setTimeout(() => { t.className = ""; }, duration);
     }
 
-    function copyToClipboard(text) {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-    }
-
     function resetApp() {
-        if(confirm("Daten löschen?")) {
+        if(confirm("Daten löschen und neue Datei laden?")) {
             localStorage.clear();
             location.reload();
         }
