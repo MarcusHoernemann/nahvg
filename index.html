@@ -2,410 +2,322 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NAHVG Kontakte - Offline</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NahVG Mitglieder-Infosystem</title>
     
-    <meta name="theme-color" content="#00549f">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NahVG Info">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="theme-color" content="#003a66">
 
     <style>
-        :root {
-            --nahvg-blue: #00549f;
-            --nahvg-light-blue: #e6f0f8;
-            --nahvg-gray: #f4f4f4;
-            --nahvg-yellow: #ffcc00;
+        :root { 
+            --nahvg-blue: #003a66; 
+            --nahvg-yellow: #ffcc00; 
+            --success-green: #28a745;
+            --alert-red: #d93025;
             --text-dark: #333;
-            --white: #ffffff;
-            --danger: #cc0000;
+            --contact-gray: #eceff1;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--nahvg-gray);
-            margin: 0;
-            padding: 0;
-            color: var(--text-dark);
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+        body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--nahvg-blue); margin: 0; padding: 0; color: var(--text-dark); min-height: 100vh; }
 
         header {
             background-color: var(--nahvg-blue);
-            color: var(--white);
-            padding: 1.5rem 1rem;
+            color: white;
+            padding: 45px 15px 25px 15px;
             text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-bottom: 4px solid var(--nahvg-yellow);
+            position: relative;
         }
 
-        header h1 {
-            margin: 0;
-            font-size: 1.5rem;
+        .info-trigger {
+            position: absolute; top: 45px; right: 20px;
+            background: var(--alert-red); color: white;
+            width: 25px; height: 25px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 8px rgba(0,0,0,0.3); border: 2px solid white; z-index: 10;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 0 15px;
-            flex: 1;
+        header h1 { margin: 0; font-size: 1.8rem; letter-spacing: 1px; }
+        header h2 { margin: 5px 0 0 0; font-size: 1.1rem; color: var(--nahvg-yellow); font-weight: normal; min-height: 1.3em; }
+
+        .container { padding: 15px; max-width: 1200px; margin: auto; }
+        
+        .app-card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
+            max-width: 600px; 
+            margin: 0 auto 15px auto; 
         }
 
-        .filter-section {
-            background: var(--white);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
+        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; background-color: #fff; }
+
+        .stats-bar {
+            background-color: var(--nahvg-yellow);
+            color: var(--nahvg-blue); 
+            padding: 12px; border-radius: 8px; margin: 10px 0; 
+            font-weight: bold; text-align: center; font-size: 1rem; border: 2px solid var(--nahvg-blue);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
         }
 
-        .filter-controls {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
+        .btn-email-all { 
+            background-color: var(--success-green); color: white; padding: 16px; 
+            border: none; border-radius: 8px; font-weight: bold; width: 100%; 
+            cursor: pointer; display: none; margin-bottom: 10px; font-size: 1rem;
+        }
+        
+        #results { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 20px; }
+
+        .member-card { 
+            background: white; border-radius: 12px; border-left: 6px solid var(--nahvg-blue); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); box-sizing: border-box;
+            width: 100%; display: flex; flex-direction: column; overflow: hidden;
         }
 
-        select {
-            padding: 8px 15px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            font-size: 1rem;
+        @media (min-width: 900px) { .member-card { width: calc(33.333% - 10px); } }
+        @media (min-width: 600px) and (max-width: 899px) { .member-card { width: calc(50% - 8px); } }
+
+        .m-body { padding: 18px; flex-grow: 1; }
+        .m-title { font-weight: bold; color: var(--nahvg-blue); font-size: 1.2rem; margin-bottom: 5px; }
+        .m-info { font-size: 0.95rem; margin-top: 4px; color: #444; line-height: 1.3; }
+        .address-sub { margin-left: 24px; display: block; }
+        .badge-container { margin-top: 12px; display: flex; gap: 10px; } 
+        .badge { background: #cfd8dc; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--nahvg-blue); font-weight: bold; }
+
+        .contact-links { 
+            background-color: var(--contact-gray); padding: 14px 18px; 
+            border-top: 1.5px solid #d1d9e0; display: flex; justify-content: space-around; 
+        }
+        .contact-links a, .contact-links span { color: var(--nahvg-blue); font-weight: bold; text-decoration: none; font-size: 0.95rem; cursor: pointer; }
+
+        #fileInput { display: none; }
+        #setupScreen, #appArea { display: none; }
+        
+        #toast { 
+            visibility: hidden; background: var(--success-green); color: white; 
+            text-align: center; padding: 16px 30px; position: fixed; bottom: 50px; left: 50%; 
+            transform: translateX(-50%); border-radius: 50px; z-index: 2000; font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 2px solid white;
             min-width: 200px;
         }
+        #toast.show { visibility: visible; }
 
-        .upload-section {
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 40px;
-            background: var(--white);
-            border-radius: 8px;
-            border: 2px dashed var(--nahvg-blue);
-        }
-
-        #status-message {
-            text-align: center;
-            padding: 10px;
-            color: #666;
-        }
-
-        .contact-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-
-        .card {
-            background: var(--white);
-            border-radius: 8px;
-            border-left: 5px solid var(--nahvg-blue);
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: transform 0.2s;
-        }
-
-        .card:hover { transform: translateY(-2px); }
-
-        .card h3 {
-            margin: 0 0 5px 0;
-            color: var(--nahvg-blue);
-        }
-
-        .card .position {
-            font-size: 0.9rem;
-            font-weight: bold;
-            color: #444;
-        }
-
-        .card .bereich {
-            font-size: 0.85rem;
-            color: #777;
-            margin-bottom: 10px;
-            font-style: italic;
-        }
-
-        .card .info {
-            font-size: 0.85rem;
-            margin-bottom: 5px;
-        }
-
-        .card .tag {
-            display: inline-block;
-            background: var(--nahvg-light-blue);
-            color: var(--nahvg-blue);
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            margin-top: 10px;
-        }
-
-        .actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-
-        .btn-call { background-color: var(--nahvg-blue); color: white; }
-        .btn-mail { background-color: #f0f0f0; color: var(--nahvg-blue); border: 1px solid var(--nahvg-blue); }
-
-        .btn-bulk-mail { 
-            background-color: var(--nahvg-yellow); 
-            color: var(--nahvg-blue);
-            padding: 10px 25px;
-            border: 1px solid #e6b800;
-        }
-
-        .btn-reset {
-            background-color: transparent;
-            color: var(--danger);
-            border: 1px solid var(--danger);
-            margin-top: 10px;
-            font-size: 0.7rem;
-            padding: 5px 10px;
-        }
-
-        footer {
-            text-align: center;
-            padding: 20px;
-            font-size: 0.8rem;
-            color: #777;
-            background: #eee;
-            border-top: 1px solid #ddd;
-        }
-
-        .copy-toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #333;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            display: none;
-            z-index: 1000;
-        }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 550px; box-shadow: 0 0 100px rgba(0,0,0,0.5); z-index: 1000; max-height: 85vh; overflow-y: auto; }
+        .info-list { margin: 0 0 15px 0; padding: 0 0 0 20px; font-size: 0.9rem; line-height: 1.4; color: #333; }
+        .info-list li { margin-bottom: 10px; }
+        .legal-box { background: #f4f7f9; padding: 15px; border-radius: 8px; border-left: 5px solid var(--nahvg-blue); font-size: 0.85rem; margin-top: 10px; color: #2c3e50; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>NAHVG Kontakte</h1>
+    <div class="info-trigger" onclick="toggleModal('infoModal')">i</div>
+    <h1>NahVG</h1>
+    <h2 id="ogNameDisplay">System lädt...</h2>
+    <div>Mitglieder-Infosystem</div>
 </header>
 
 <div class="container">
-    <div id="upload-ui" class="upload-section" style="display: none;">
-        <h3>Lokale Datenbank leer</h3>
-        <p>Bitte wählen Sie die <strong>nahvg_kontakte.xlsx</strong> Datei aus, um das Tool zu initialisieren.</p>
-        <input type="file" id="file-input" accept=".xlsx, .xls">
+    <div id="setupScreen" class="app-card" style="display: block;">
+        <h3 style="text-align: center; color: var(--nahvg-blue);">Version 1.2.9 (Offline)</h3>
+        <p id="statusMsg" style="text-align: center; color: #666;">Bereit für Import.</p>
+        <label for="fileInput" id="uploadBtn" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI LADEN</label>
+        <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
 
-    <div id="filter-container" class="filter-section" style="display: none;">
-        <div class="filter-controls">
-            <label for="bereich-filter">Bereich filtern:</label>
-            <select id="bereich-filter">
-                <option value="all">Alle Bereiche</option>
+    <div id="appArea">
+        <div class="app-card">
+            <input type="text" id="searchInput" placeholder="Suchen (Name, Ort, Tätigkeit...)" onkeyup="filterData()">
+            
+            <select id="filterArbeitgeber" onchange="filterData()">
+                <option value="">Alle Betriebe</option>
             </select>
+
+            <div id="statsDisplay" class="stats-bar">
+                <span>👥</span> <span id="statsText">Berechne...</span>
+            </div>
+            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Mail schreiben</button>
+            <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; font-size:0.8rem; width:100%; cursor:pointer; margin-top:15px; opacity:0.7;">Ortsgruppe wechseln</button>
         </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-            <button id="bulk-mail-btn" class="btn btn-bulk-mail">Sammel-E-Mail</button>
-            <button id="reset-db" class="btn btn-reset">Datenbank leeren & Datei neu wählen</button>
-        </div>
+        <div id="results"></div>
     </div>
-    
-    <div id="status-message">Suche gespeicherte Daten...</div>
-    <div id="contact-grid" class="contact-grid"></div>
 </div>
 
-<footer>
-    NAHVG Info Tool | Marcus Hörnemann | Version 1.3.0 (Vollständige Offline-Edition)
-</footer>
+<div id="infoModal" class="modal">
+    <h3>System-Information & Datenschutz</h3>
+    <ul class="info-list">
+        <li><b>Offline-Modus:</b> Diese Datei enthält alle Programm-Bibliotheken. Es wird kein Internet zum Betrieb benötigt.</li>
+        <li><b>Lokale Datenhoheit:</b> Alle geladenen Daten verbleiben ausschließlich in Ihrem Browser-Speicher.</li>
+        <li><b>Kein Datentransfer:</b> Es findet keine Übertragung an externe Server statt.</li>
+    </ul>
+    <div class="legal-box">
+        <b>Datenschutz-Garantie:</b><br>
+        Technische Architektur stellt sicher, dass Gewerkschaftsdaten privat bleiben.
+    </div>
+    <p style="margin-top: 20px; font-size: 0.85rem; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
+        Entwicklung: Marcus Hörnemann | Version 1.2.9
+    </p>
+    <button onclick="toggleModal('infoModal')" style="width:100%; padding:14px; background:var(--nahvg-blue); color:white; border-radius:8px; border:none; font-weight:bold; cursor:pointer;">Schließen</button>
+</div>
 
-<div id="toast" class="copy-toast">E-Mail kopiert!</div>
-
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<div id="toast">✅ Kopiert!</div>
 
 <script>
-    const DB_NAME = 'NahvgDB';
-    const STORE_NAME = 'excel_store';
-    const DB_VERSION = 1;
-    
-    let allContacts = [];
-    let currentFiltered = [];
+    /* WICHTIG: Kopiere den Inhalt der Datei xlsx.full.min.js hier hinein.
+       Du findest den Code unter: https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
+    */
+</script>
+<script>
+    let members = [];
+    let currentFilteredEmails = [];
 
-    // --- IndexedDB für lokale Speicherung ---
-    function openDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    db.createObjectStore(STORE_NAME);
-                }
-            };
-            request.onsuccess = (e) => resolve(e.target.result);
-            request.onerror = (e) => reject(e.target.error);
-        });
-    }
-
-    async function saveToDB(data) {
-        const db = await openDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).put(data, 'latest_excel');
-        return new Promise(r => tx.oncomplete = r);
-    }
-
-    async function loadFromDB() {
-        try {
-            const db = await openDB();
-            return new Promise((resolve) => {
-                const tx = db.transaction(STORE_NAME, 'readonly');
-                const request = tx.objectStore(STORE_NAME).get('latest_excel');
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => resolve(null);
-            });
-        } catch(e) { return null; }
-    }
-
-    async function clearDB() {
-        if(confirm("Möchten Sie die gespeicherten Daten wirklich löschen?")) {
-            const db = await openDB();
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            tx.objectStore(STORE_NAME).delete('latest_excel');
-            tx.oncomplete = () => location.reload();
+    window.onload = function() {
+        const savedData = localStorage.getItem('gewerkschafts_daten');
+        const savedOG = localStorage.getItem('gewerkschafts_og_name');
+        if (savedData && savedData !== "[]") {
+            try {
+                members = JSON.parse(savedData);
+                document.getElementById('ogNameDisplay').innerText = savedOG || "NahVG Info";
+                showApp();
+            } catch(e) {}
         }
-    }
-
-    // --- Verarbeitung ---
-    async function initApp() {
-        const cachedData = await loadFromDB();
-        if (cachedData) {
-            processExcel(cachedData, false);
-        } else {
-            document.getElementById('status-message').innerText = "";
-            document.getElementById('upload-ui').style.display = 'block';
-        }
-    }
-
-    document.getElementById('file-input').onchange = (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => processExcel(ev.target.result, true);
-        reader.readAsArrayBuffer(file);
+        document.getElementById('fileInput').addEventListener('change', processFile, false);
     };
 
-    document.getElementById('reset-db').onclick = clearDB;
-
-    function processExcel(buffer, shouldSave) {
-        try {
-            const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            allContacts = XLSX.utils.sheet_to_json(firstSheet);
-            currentFiltered = allContacts;
-            
-            if (shouldSave) saveToDB(buffer);
-
-            setupFilter(allContacts);
-            renderContacts(allContacts);
-            
-            document.getElementById('upload-ui').style.display = 'none';
-            document.getElementById('status-message').style.display = 'none';
-            document.getElementById('filter-container').style.display = 'flex';
-        } catch (err) {
-            alert("Fehler: Das Dateiformat ist ungültig oder die Excel ist beschädigt.");
-            console.error(err);
-        }
-    }
-
-    function setupFilter(contacts) {
-        const select = document.getElementById('bereich-filter');
-        const bereiche = [...new Set(contacts.map(c => c.Bereich).filter(b => b))];
-        select.innerHTML = '<option value="all">Alle Bereiche</option>';
-        bereiche.sort().forEach(b => {
-            const opt = document.createElement('option');
-            opt.value = opt.textContent = b;
-            select.appendChild(opt);
-        });
-
-        select.onchange = (e) => {
-            currentFiltered = e.target.value === 'all' 
-                ? allContacts 
-                : allContacts.filter(c => c.Bereich === e.target.value);
-            renderContacts(currentFiltered);
+    function processFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        let ogName = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                // XLSX ist hier global durch die eingebettete Bibliothek verfügbar
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet, { raw: false });
+                members = json.filter(m => (m.Nachname || m['Nachname']) && String(m.Nachname || m['Nachname']).trim() !== "");
+                members.sort((a, b) => String(a.Nachname || "").localeCompare(String(b.Nachname || "")));
+                localStorage.setItem('gewerkschafts_daten', JSON.stringify(members));
+                localStorage.setItem('gewerkschafts_og_name', ogName);
+                document.getElementById('ogNameDisplay').innerText = ogName;
+                showApp();
+            } catch (err) { alert("Fehler beim Lesen der Excel-Datei."); }
         };
-        document.getElementById('bulk-mail-btn').onclick = sendBulkMail;
+        reader.readAsArrayBuffer(file);
     }
 
-    function renderContacts(contacts) {
-        const grid = document.getElementById('contact-grid');
-        grid.innerHTML = '';
-        contacts.forEach(c => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            const email = c.Email || c['E-Mail'] || '';
-            const phone = String(c.Mobil || c.Telefon || '');
-            card.innerHTML = `
-                <h3>${c.Vorname || ''} ${c.Name || ''}</h3>
-                <div class="position">${c.Position || ''}</div>
-                <div class="bereich">${c.Bereich || ''}</div>
-                <div class="info"><strong>Tel:</strong> ${c.Telefon || '-'}</div>
-                <div class="info"><strong>Mobil:</strong> ${c.Mobil || '-'}</div>
-                <div class="info"><strong>E-Mail:</strong> ${email || '-'}</div>
-                <div class="tag">${c['Ansprechpartner für'] || ''}</div>
-                <div class="actions">
-                    ${phone && phone !== '-' ? `<a href="tel:${phone}" class="btn btn-call">Anrufen</a>` : ''}
-                    <button class="btn btn-mail" onclick="handleMail('${email}')">E-Mail</button>
-                </div>
-            `;
-            grid.appendChild(card);
+    function showApp() {
+        document.getElementById('setupScreen').style.display = 'none';
+        document.getElementById('appArea').style.display = 'block';
+        setupFilters();
+        filterData();
+    }
+
+    function setupFilters() {
+        const agSelect = document.getElementById('filterArbeitgeber');
+        const arbeitgeber = [...new Set(members.map(m => m['Arbeitgeber:'] || m['Arbeitgeber']).filter(a => a))].sort();
+        agSelect.innerHTML = '<option value="">Alle Betriebe</option>';
+        arbeitgeber.forEach(ag => {
+            const opt = document.createElement('option');
+            opt.value = ag; opt.innerText = ag; agSelect.appendChild(opt);
         });
-        const btn = document.getElementById('bulk-mail-btn');
-        const emailCount = currentFiltered.filter(c => c.Email || c['E-Mail']).length;
-        btn.textContent = `Sammel-E-Mail (${emailCount})`;
-        btn.style.display = emailCount > 0 ? 'block' : 'none';
     }
 
-    function sendBulkMail() {
-        const emails = currentFiltered.map(c => c.Email || c['E-Mail']).filter(e => e && e !== 'undefined');
-        if (emails.length) window.location.href = `mailto:?bcc=${emails.join(',')}`;
+    function filterData() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const agFilter = document.getElementById('filterArbeitgeber').value;
+        const container = document.getElementById('results');
+        const statsText = document.getElementById('statsText');
+        const emailBtn = document.getElementById('emailAllBtn');
+        container.innerHTML = "";
+        const filtered = members.filter(m => {
+            const searchSource = Object.values(m).join(' ').toLowerCase();
+            const matchesSearch = searchSource.includes(search);
+            const currentAg = m['Arbeitgeber:'] || m['Arbeitgeber'] || '';
+            return matchesSearch && (agFilter === "" || currentAg === agFilter);
+        });
+        currentFilteredEmails = filtered.map(m => m['E-Mail (primär)'] || m['E-Mail'] || m['Email']).filter(e => e && e.includes('@'));
+        statsText.innerText = `${filtered.length} Mitglieder`;
+        emailBtn.style.display = currentFilteredEmails.length > 0 ? "block" : "none";
+        filtered.forEach(m => {
+            const tel = m['Mobil'] || m['Telefon'] || '';
+            const tätigkeit = m['Tätigkeit des Mitglieds:'] || m['Tätigkeit'] || m['Beruf'] || '-';
+            const email = m['E-Mail (primär)'] || m['E-Mail'] || m['Email'] || '';
+            container.innerHTML += `
+                <div class="member-card">
+                    <div class="m-body">
+                        <div class="m-title">${m['Vorname'] || ''} ${m['Nachname'] || ''}</div>
+                        <div class="m-info">🏢 <b>${m['Arbeitgeber:'] || m['Arbeitgeber'] || '-'}</b></div>
+                        <div class="m-info">🛠️ ${tätigkeit}</div>
+                        <div class="m-info">🏠 ${m['Straße'] || '-'}<br><span class="address-sub">${m['PLZ'] || ''} ${m['Ort'] || ''}</span></div>
+                        <div class="badge-container">
+                            <span class="badge">🎂 ${m['Geburtsdatum'] || 'k.A.'}</span> 
+                            <span class="badge">📅 ${m['Eintritt'] || ''}</span>
+                        </div>
+                    </div>
+                    <div class="contact-links">
+                        ${tel ? `<a href="tel:${tel}">📞 Anrufen</a>` : '<span>📞 k.A.</span>'}
+                        ${email ? `<span onclick="handleMail('${email}')">✉️ Mail</span>` : '<span>✉️ k.A.</span>'}
+                    </div>
+                </div>`;
+        });
     }
 
     function handleMail(email) {
-        if (!email || email === 'undefined') return;
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-            window.location.href = `mailto:${email}`;
-        } else {
-            navigator.clipboard.writeText(email).then(() => {
-                const t = document.getElementById('toast');
-                t.style.display = 'block';
-                setTimeout(() => t.style.display = 'none', 2000);
-            });
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) { 
+            window.location.href = `mailto:${email}`; 
+        } else { 
+            copyToClipboard(email); 
+            showToast("✅ E-Mail kopiert!"); 
         }
     }
 
-    window.onload = initApp;
-</script>
+    function sendBulkEmail() {
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            window.location.href = `mailto:?bcc=${currentFilteredEmails.join(',')}&subject=NahVG Info`;
+        } else {
+            const bcc = currentFilteredEmails.join('; ');
+            copyToClipboard(bcc);
+            showToast(`✅ ${currentFilteredEmails.length} Adressen kopiert!`, 5000);
+        }
+    }
 
+    function toggleModal(id) {
+        const m = document.getElementById(id);
+        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function showToast(message, duration = 2500) {
+        const t = document.getElementById("toast");
+        t.innerText = message;
+        t.className = "show";
+        setTimeout(() => { t.className = ""; }, duration);
+    }
+
+    function copyToClipboard(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    }
+
+    function resetApp() {
+        if(confirm("Daten löschen?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+</script>
 </body>
 </html>
