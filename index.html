@@ -88,10 +88,6 @@
         .m-body { padding: 18px; flex-grow: 1; }
         .m-title { font-weight: bold; color: var(--nahvg-blue); font-size: 1.2rem; margin-bottom: 5px; }
         .m-info { font-size: 0.95rem; margin-top: 4px; color: #444; line-height: 1.3; }
-        .address-sub { margin-left: 24px; display: block; }
-        .badge-container { margin-top: 12px; display: flex; gap: 10px; } 
-        .badge { background: #cfd8dc; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--nahvg-blue); font-weight: bold; }
-
         .contact-links { 
             background-color: var(--contact-gray); padding: 14px 18px; 
             border-top: 1.5px solid #d1d9e0; display: flex; justify-content: space-around; 
@@ -112,8 +108,6 @@
 
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 550px; box-shadow: 0 0 100px rgba(0,0,0,0.5); z-index: 1000; max-height: 85vh; overflow-y: auto; }
         .info-list { margin: 0 0 15px 0; padding: 0 0 0 20px; font-size: 0.9rem; line-height: 1.4; color: #333; }
-        .info-list li { margin-bottom: 10px; }
-        .legal-box { background: #f4f7f9; padding: 15px; border-radius: 8px; border-left: 5px solid var(--nahvg-blue); font-size: 0.85rem; margin-top: 10px; color: #2c3e50; }
         
         #installBtn {
             display: none; background: white; color: var(--nahvg-blue); border: 2px solid var(--nahvg-blue);
@@ -167,17 +161,13 @@
 
 <div id="toast">✅ Kopiert!</div>
 
-<script>
-    /* WICHTIG: Füge hier den Code von https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js ein 
-    */
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
     let members = [];
     let currentFilteredEmails = [];
     let deferredPrompt;
 
-    // PWA Installation Logik
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
@@ -195,13 +185,6 @@
         }
     });
 
-    // Service Worker Registrierung
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').catch(() => {});
-        });
-    }
-
     window.onload = function() {
         const savedData = localStorage.getItem('gewerkschafts_daten');
         const savedOG = localStorage.getItem('gewerkschafts_og_name');
@@ -210,7 +193,11 @@
                 members = JSON.parse(savedData);
                 document.getElementById('ogNameDisplay').innerText = savedOG || "NahVG Info";
                 showApp();
-            } catch(e) {}
+            } catch(e) {
+                console.error("Fehler beim Laden aus Speicher", e);
+            }
+        } else {
+            document.getElementById('ogNameDisplay').innerText = "Bereit für Import";
         }
         document.getElementById('fileInput').addEventListener('change', processFile, false);
     };
@@ -218,21 +205,45 @@
     function processFile(event) {
         const file = event.target.files[0];
         if (!file) return;
+        
         let ogName = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
         const reader = new FileReader();
+        
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(sheet, { raw: false });
-                members = json.filter(m => (m.Nachname || m['Nachname']) && String(m.Nachname || m['Nachname']).trim() !== "");
-                members.sort((a, b) => String(a.Nachname || "").localeCompare(String(b.Nachname || "")));
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                
+                // Konvertierung mit Defensiv-Check
+                const json = XLSX.utils.sheet_to_json(sheet, { raw: false, defval: "" });
+                
+                // Filtert leere Zeilen
+                members = json.filter(m => {
+                    const name = m.Nachname || m['Nachname'] || m['Name'];
+                    return name && String(name).trim() !== "";
+                });
+
+                if(members.length === 0) {
+                    alert("Keine Daten gefunden. Bitte prüfe, ob die Excel-Spalte 'Nachname' existiert.");
+                    return;
+                }
+
+                members.sort((a, b) => {
+                    const nameA = String(a.Nachname || a['Nachname'] || "");
+                    const nameB = String(b.Nachname || b['Nachname'] || "");
+                    return nameA.localeCompare(nameB);
+                });
+
                 localStorage.setItem('gewerkschafts_daten', JSON.stringify(members));
                 localStorage.setItem('gewerkschafts_og_name', ogName);
                 document.getElementById('ogNameDisplay').innerText = ogName;
                 showApp();
-            } catch (err) { alert("Fehler beim Verarbeiten der Excel."); }
+            } catch (err) { 
+                console.error(err);
+                alert("Fehler beim Verarbeiten der Excel: " + err.message); 
+            }
         };
         reader.readAsArrayBuffer(file);
     }
@@ -246,7 +257,7 @@
 
     function setupFilters() {
         const agSelect = document.getElementById('filterArbeitgeber');
-        const arbeitgeber = [...new Set(members.map(m => m['Arbeitgeber:'] || m['Arbeitgeber']).filter(a => a))].sort();
+        const arbeitgeber = [...new Set(members.map(m => m['Arbeitgeber:'] || m['Arbeitgeber'] || m['Betrieb'])).filter(a => a)].sort();
         agSelect.innerHTML = '<option value="">Alle Betriebe</option>';
         arbeitgeber.forEach(ag => {
             const opt = document.createElement('option');
@@ -259,24 +270,30 @@
         const agFilter = document.getElementById('filterArbeitgeber').value;
         const container = document.getElementById('results');
         container.innerHTML = "";
+        
         const filtered = members.filter(m => {
             const searchSource = Object.values(m).join(' ').toLowerCase();
             const matchesSearch = searchSource.includes(search);
-            const currentAg = m['Arbeitgeber:'] || m['Arbeitgeber'] || '';
+            const currentAg = m['Arbeitgeber:'] || m['Arbeitgeber'] || m['Betrieb'] || '';
             return matchesSearch && (agFilter === "" || currentAg === agFilter);
         });
-        currentFilteredEmails = filtered.map(m => m['E-Mail (primär)'] || m['E-Mail'] || m['Email']).filter(e => e && e.includes('@'));
+
+        currentFilteredEmails = filtered.map(m => m['E-Mail (primär)'] || m['E-Mail'] || m['Email'] || m['Mail']).filter(e => e && e.includes('@'));
         document.getElementById('statsText').innerText = `${filtered.length} Mitglieder`;
         document.getElementById('emailAllBtn').style.display = currentFilteredEmails.length > 0 ? "block" : "none";
         
         filtered.forEach(m => {
-            const tel = m['Mobil'] || m['Telefon'] || '';
-            const email = m['E-Mail (primär)'] || m['E-Mail'] || m['Email'] || '';
+            const tel = m['Mobil'] || m['Telefon'] || m['Handy'] || '';
+            const email = m['E-Mail (primär)'] || m['E-Mail'] || m['Email'] || m['Mail'] || '';
+            const vname = m['Vorname'] || '';
+            const nname = m['Nachname'] || m['Name'] || '';
+            const ag = m['Arbeitgeber:'] || m['Arbeitgeber'] || m['Betrieb'] || '-';
+            
             container.innerHTML += `
                 <div class="member-card">
                     <div class="m-body">
-                        <div class="m-title">${m['Vorname'] || ''} ${m['Nachname'] || ''}</div>
-                        <div class="m-info">🏢 <b>${m['Arbeitgeber:'] || m['Arbeitgeber'] || '-'}</b></div>
+                        <div class="m-title">${vname} ${nname}</div>
+                        <div class="m-info">🏢 <b>${ag}</b></div>
                         <div class="m-info">🏠 ${m['Straße'] || ''}, ${m['PLZ'] || ''} ${m['Ort'] || ''}</div>
                     </div>
                     <div class="contact-links">
