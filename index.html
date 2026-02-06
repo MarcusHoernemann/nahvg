@@ -12,19 +12,29 @@
         body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--nahvg-blue); margin: 0; padding: 0; color: var(--text-dark); min-height: 100vh; }
         header { background-color: var(--nahvg-blue); color: white; padding: 45px 15px 25px 15px; text-align: center; border-bottom: 4px solid var(--nahvg-yellow); }
         .container { padding: 15px; max-width: 1400px; margin: auto; }
-        .app-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 600px; margin: 0 auto 15px auto; }
+        
+        /* Die App-Card mit Suche und Statistik */
+        .app-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 600px; margin: 0 auto 15px auto; position: relative; }
+        
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-        .stats-bar { background-color: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 12px; border-radius: 8px; margin: 10px 0; font-weight: bold; text-align: center; border: 2px solid var(--nahvg-blue); }
+        
+        /* Statistik-Bar oben links innerhalb der Card */
+        .stats-bar { background-color: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 8px 15px; border-radius: 6px; font-weight: bold; text-align: center; margin-bottom: 10px; display: inline-block; border: 2px solid var(--nahvg-blue); }
         
         #results { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
-        @media (min-width: 768px) { #results { grid-template-columns: repeat(2, 1fr); } }
+        
+        /* Desktop: Dreispaltig */
         @media (min-width: 1100px) { #results { grid-template-columns: repeat(3, 1fr); } }
+        /* Tablet: Zweispaltig */
+        @media (min-width: 768px) and (max-width: 1099px) { #results { grid-template-columns: repeat(2, 1fr); } }
 
         .member-card { background: white; border-radius: 12px; border-left: 6px solid var(--nahvg-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; }
         .m-body { padding: 18px; flex-grow: 1; }
         .m-title { font-weight: bold; color: var(--nahvg-blue); font-size: 1.2rem; }
+        
         .contact-links { background-color: #eceff1; padding: 14px; border-top: 1.5px solid #d1d9e0; display: flex; justify-content: space-around; gap: 5px; }
         .contact-links a, .contact-links span { color: var(--nahvg-blue); font-weight: bold; text-decoration: none; cursor: pointer; font-size: 0.85rem; text-align: center; flex: 1; }
+        
         #fileInput { display: none; }
         #toast { visibility: hidden; background: var(--success-green); color: white; text-align: center; padding: 16px; position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); border-radius: 50px; z-index: 2000; }
         #toast.show { visibility: visible; }
@@ -40,16 +50,16 @@
 <div class="container">
     <div id="setupScreen" class="app-card">
         <h3 style="text-align: center;">Excel-Datei importieren</h3>
-        <p style="text-align: center; color: var(--nahvg-blue);">Nur die Spalte <b>Mobil</b> wird eingelesen.</p>
+        <p style="text-align: center;">Bitte Spalte "Mobil" bereitstellen.</p>
         <label for="fileInput" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI AUSWÄHLEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
 
     <div id="appArea" style="display:none;">
         <div class="app-card">
-            <input type="text" id="searchInput" placeholder="Suchen..." onkeyup="filterData()">
+            <div class="stats-bar">👥 <span id="statsText">0</span> Mitglieder</div>
+            <input type="text" id="searchInput" placeholder="Suchen nach Name, Ort, Mobil..." onkeyup="filterData()">
             <select id="filterArbeitgeber" onchange="filterData()"></select>
-            <div id="statsDisplay" class="stats-bar">👥 <span id="statsText">0</span> Mitglieder</div>
             <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; width:100%; cursor:pointer; margin-top:10px;">Andere Datei laden</button>
         </div>
         <div id="results"></div>
@@ -80,33 +90,36 @@
         reader.onload = function(event) {
             try {
                 const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
+                const workbook = XLSX.read(data, {type: 'array', cellDates: true});
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(sheet, {defval: ""});
+                const json = XLSX.utils.sheet_to_json(sheet, {raw: false, defval: ""});
 
                 members = json.map(row => {
                     const keys = Object.keys(row);
                     
-                    // Harte Zuordnung: Nur wenn "Mobil" drin steht, wird es genommen.
-                    const getMobilOnly = () => {
-                        const key = keys.find(k => k.toLowerCase().trim() === 'mobil');
+                    // Sucht wert für Mobil, ignoriert alles was "Telefon" heißt
+                    const findMobil = () => {
+                        const key = keys.find(k => {
+                            const kL = k.toLowerCase().trim();
+                            return kL.includes('mobil') && !kL.includes('telefon');
+                        });
                         return key ? String(row[key]).trim() : "";
                     };
 
-                    const getField = (tag) => {
-                        const key = keys.find(k => k.toLowerCase().includes(tag));
+                    const getF = (tags) => {
+                        const key = keys.find(k => tags.some(t => k.toLowerCase().includes(t)));
                         return key ? String(row[key]).trim() : "";
                     };
 
                     return {
-                        vorname: getField('vorname'),
-                        nachname: getField('nachname') || getField('name'),
-                        betrieb: getField('betrieb') || getField('arbeitgeber'),
-                        mail: getField('mail'),
-                        tel: getMobilOnly(), 
-                        str: getField('str'),
-                        plz: getField('plz'),
-                        ort: getField('ort')
+                        vorname: getF(['vorname']),
+                        nachname: getF(['nachname', 'name']),
+                        betrieb: getF(['arbeitgeber', 'betrieb']),
+                        mail: getF(['email', 'mail']),
+                        tel: findMobil(),
+                        str: getF(['strasse', 'straße']),
+                        plz: getF(['plz']),
+                        ort: getF(['ort'])
                     };
                 }).filter(m => m.nachname !== "");
 
@@ -133,8 +146,9 @@
         const query = document.getElementById('searchInput').value.toLowerCase();
         const agFilter = document.getElementById('filterArbeitgeber').value;
         const container = document.getElementById('results');
+        
         const filtered = members.filter(m => {
-            const content = (m.vorname + " " + m.nachname + " " + m.betrieb).toLowerCase();
+            const content = (m.vorname + " " + m.nachname + " " + m.betrieb + " " + m.ort + " " + m.tel).toLowerCase();
             return content.includes(query) && (!agFilter || m.betrieb === agFilter);
         });
 
@@ -147,7 +161,7 @@
                     <div style="font-size:0.85rem; color: #666;">🏠 ${m.str}, ${m.plz} ${m.ort}</div>
                 </div>
                 <div class="contact-links">
-                    ${m.tel ? `<a href="tel:${m.tel.replace(/\D/g, '')}">📱 ${m.tel}</a>` : '<span style="color:#999">📱 kein Mobil</span>'}
+                    ${m.tel ? `<a href="tel:${m.tel.replace(/\D/g, '')}">📱 ${m.tel}</a>` : '<span style="color:#d93025">📱 kein Mobil</span>'}
                     ${m.mail ? `<span onclick="copyMail('${m.mail}')">✉️ Mail</span>` : '<span>✉️ k.A.</span>'}
                 </div>
             </div>
