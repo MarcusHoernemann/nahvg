@@ -16,13 +16,7 @@
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
         .stats-bar { background-color: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 12px; border-radius: 8px; margin: 10px 0; font-weight: bold; text-align: center; border: 2px solid var(--nahvg-blue); }
         
-        #results { 
-            display: grid; 
-            grid-template-columns: 1fr; 
-            gap: 15px; 
-            margin-top: 20px; 
-        }
-
+        #results { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
         @media (min-width: 768px) { #results { grid-template-columns: repeat(2, 1fr); } }
         @media (min-width: 1100px) { #results { grid-template-columns: repeat(3, 1fr); } }
 
@@ -39,13 +33,14 @@
 <body>
 
 <header>
-    <h1>NahVG</h1>
+    <h1 onclick="debugColumns()" style="cursor:help">NahVG</h1>
     <h2 id="ogNameDisplay">Lade System...</h2>
 </header>
 
 <div class="container">
     <div id="setupScreen" class="app-card">
         <h3 style="text-align: center;">Excel-Datei importieren</h3>
+        <p style="text-align: center; color: red; font-size: 0.8rem;">Hinweis: Es wird nur die Spalte "Mobil" eingelesen.</p>
         <label for="fileInput" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI AUSWÄHLEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
@@ -65,6 +60,7 @@
 
 <script>
     let members = [];
+    let rawColumns = [];
 
     window.onload = function() {
         const savedData = localStorage.getItem('nahvg_data');
@@ -89,50 +85,58 @@
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet, {defval: ""});
 
+                if (json.length > 0) rawColumns = Object.keys(json[0]);
+
                 members = json.map(row => {
                     const keys = Object.keys(row);
                     
-                    // Hilfsfunktion: Sucht den Wert basierend auf Wortfetzen im Spaltennamen
-                    const getByFragment = (fragments) => {
+                    const getVal = (fragments, exclude = []) => {
                         const foundKey = keys.find(k => {
                             const cleanK = k.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                            return fragments.some(f => cleanK.includes(f.toLowerCase()));
+                            const matches = fragments.some(f => cleanK.includes(f.toLowerCase()));
+                            const isExcluded = exclude.some(ex => cleanK.includes(ex.toLowerCase()));
+                            return matches && !isExcluded;
                         });
                         return foundKey ? String(row[foundKey]).trim() : "";
                     };
 
                     return {
-                        vorname: getByFragment(['vorname', 'first']),
-                        nachname: getByFragment(['nachname', 'last', 'name', 'mitglied']),
-                        betrieb: getByFragment(['arbeitgeber', 'betrieb', 'firma']),
-                        mail: getByFragment(['email', 'mail']),
-                        tel: getByFragment(['mobil', 'handy', 'phone', 'tel', 'telefon']),
-                        str: getByFragment(['strasse', 'straße', 'street']),
-                        plz: getByFragment(['plz', 'zip']),
-                        ort: getByFragment(['ort', 'stadt', 'city'])
+                        vorname: getVal(['vorname']),
+                        nachname: getVal(['nachname', 'name', 'mitglied']),
+                        betrieb: getVal(['arbeitgeber', 'betrieb']),
+                        mail: getVal(['email', 'mail']),
+                        // PRIORITÄT: Nur Mobil/Handy, Telefon aktiv ausschließen
+                        tel: getVal(['mobil', 'handy'], ['telefon', 'festnetz']), 
+                        str: getVal(['strasse', 'straße']),
+                        plz: getVal(['plz']),
+                        ort: getVal(['ort'])
                     };
                 }).filter(m => m.nachname !== "");
-
-                if (members.length === 0) throw new Error("Keine Daten erkannt.");
 
                 localStorage.setItem('nahvg_data', JSON.stringify(members));
                 localStorage.setItem('nahvg_og', file.name.replace(/\.[^/.]+$/, ""));
                 location.reload(); 
             } catch (err) {
-                alert("Fehler beim Laden: " + err.message);
+                alert("Fehler: " + err.message);
             }
         };
         reader.readAsArrayBuffer(file);
     }
 
+    function debugColumns() {
+        if (rawColumns.length > 0) {
+            alert("Gefundene Spalten in deiner Datei:\n\n" + rawColumns.join("\n"));
+        } else {
+            alert("Lade erst eine Datei hoch, um die Spalten zu prüfen.");
+        }
+    }
+
     function showApp() {
         document.getElementById('setupScreen').style.display = 'none';
         document.getElementById('appArea').style.display = 'block';
-        
         const ags = [...new Set(members.map(m => m.betrieb))].filter(a => a).sort();
         const sel = document.getElementById('filterArbeitgeber');
         sel.innerHTML = '<option value="">Alle Betriebe</option>' + ags.map(a => `<option value="${a}">${a}</option>`).join('');
-        
         filterData();
     }
 
@@ -140,11 +144,9 @@
         const query = document.getElementById('searchInput').value.toLowerCase();
         const agFilter = document.getElementById('filterArbeitgeber').value;
         const container = document.getElementById('results');
-        
         const filtered = members.filter(m => {
             const matchesSearch = (m.vorname + m.nachname + m.betrieb + m.ort).toLowerCase().includes(query);
-            const matchesAg = !agFilter || m.betrieb === agFilter;
-            return matchesSearch && matchesAg;
+            return matchesSearch && (!agFilter || m.betrieb === agFilter);
         });
 
         document.getElementById('statsText').innerText = filtered.length;
@@ -156,8 +158,8 @@
                     <div style="font-size:0.85rem; color: #666;">🏠 ${m.str}, ${m.plz} ${m.ort}</div>
                 </div>
                 <div class="contact-links">
-                    ${m.tel ? `<a href="tel:${m.tel.replace(/\s+/g, '')}">📞 ${m.tel}</a>` : '<span>📞 k.A.</span>'}
-                    ${m.mail ? `<span onclick="copyMail('${m.mail}')">✉️ Kopieren</span>` : '<span>✉️ k.A.</span>'}
+                    ${m.tel ? `<a href="tel:${m.tel.replace(/\s+/g, '')}">📱 ${m.tel}</a>` : '<span style="color:red">📱 k.A.</span>'}
+                    ${m.mail ? `<span onclick="copyMail('${m.mail}')">✉️ Mail</span>` : '<span>✉️ k.A.</span>'}
                 </div>
             </div>
         `).join('');
