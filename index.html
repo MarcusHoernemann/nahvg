@@ -15,11 +15,9 @@
         
         .app-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 600px; margin: 0 auto 15px auto; }
         
-        /* Infobar oben mit Statistik links und Email rechts */
-        .info-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .stats-box { background-color: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 2px solid var(--nahvg-blue); }
-        .email-btn { background-color: var(--nahvg-blue); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
-        .email-btn:hover { background-color: #002a4d; }
+        .info-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .stats-badge { background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 2px solid var(--nahvg-blue); }
+        .bulk-btn { background: var(--nahvg-blue); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
 
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
         
@@ -27,12 +25,12 @@
         @media (min-width: 768px) { #results { grid-template-columns: repeat(2, 1fr); } }
         @media (min-width: 1100px) { #results { grid-template-columns: repeat(3, 1fr); } }
 
-        .member-card { background: white; border-radius: 12px; border-left: 6px solid var(--nahvg-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; }
+        .member-card { background: white; border-radius: 12px; border-left: 6px solid var(--nahvg-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column; }
         .m-body { padding: 18px; flex-grow: 1; }
-        .m-title { font-weight: bold; color: var(--nahvg-blue); font-size: 1.2rem; }
+        .m-title { font-weight: bold; color: var(--nahvg-blue); font-size: 1.2rem; margin-bottom: 5px; }
         
-        .contact-links { background-color: #eceff1; padding: 14px; border-top: 1.5px solid #d1d9e0; display: flex; justify-content: space-around; gap: 5px; }
-        .contact-links a, .contact-links span { color: var(--nahvg-blue); font-weight: bold; text-decoration: none; cursor: pointer; font-size: 0.85rem; text-align: center; flex: 1; }
+        .contact-links { background-color: #eceff1; padding: 14px; border-top: 1.5px solid #d1d9e0; display: flex; justify-content: space-around; }
+        .contact-links a, .contact-links span { color: var(--nahvg-blue); font-weight: bold; text-decoration: none; cursor: pointer; font-size: 0.85rem; }
         
         #fileInput { display: none; }
         #toast { visibility: hidden; background: var(--success-green); color: white; text-align: center; padding: 16px; position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); border-radius: 50px; z-index: 2000; }
@@ -43,25 +41,25 @@
 
 <header>
     <h1>NahVG</h1>
-    <h2 id="ogNameDisplay">System bereit</h2>
+    <h2 id="ogNameDisplay">Daten-Import</h2>
 </header>
 
 <div class="container">
     <div id="setupScreen" class="app-card">
-        <h3 style="text-align: center;">Excel-Datei importieren</h3>
+        <h3 style="text-align: center;">Excel-Datei laden</h3>
         <label for="fileInput" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI AUSWÄHLEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
 
     <div id="appArea" style="display:none;">
         <div class="app-card">
-            <div class="info-bar">
-                <div class="stats-box">👥 <span id="statsText">0</span></div>
-                <button class="email-btn" id="bulkEmailBtn" onclick="sendBulkEmail()">📧 Sammelemail</button>
+            <div class="info-header">
+                <div class="stats-badge">👥 <span id="statsText">0</span></div>
+                <button class="bulk-btn" onclick="sendBulkEmail()">📧 Sammelemail</button>
             </div>
             <input type="text" id="searchInput" placeholder="Suchen..." onkeyup="filterData()">
             <select id="filterArbeitgeber" onchange="filterData()"></select>
-            <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; width:100%; cursor:pointer; margin-top:10px; font-size: 0.8rem;">Andere Datei laden</button>
+            <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; width:100%; cursor:pointer; margin-top:10px; font-size:0.75rem;">Andere Datei hochladen</button>
         </div>
         <div id="results"></div>
     </div>
@@ -93,36 +91,34 @@
             try {
                 const data = new Uint8Array(event.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(sheet, {defval: ""});
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {defval: ""});
 
                 members = json.map(row => {
-                    const keys = Object.keys(row);
-                    const getV = (tags, avoid = []) => {
-                        const key = keys.find(k => {
+                    const find = (names, exclude = []) => {
+                        const key = Object.keys(row).find(k => {
                             const kl = k.toLowerCase().trim();
-                            return tags.some(t => kl.includes(t)) && !avoid.some(a => kl.includes(a));
+                            return names.some(n => kl.includes(n)) && !exclude.some(ex => kl.includes(ex));
                         });
                         return key ? String(row[key]).trim() : "";
                     };
 
                     return {
-                        vorname: getV(['vorname']),
-                        nachname: getV(['nachname', 'name']),
-                        betrieb: getV(['arbeitgeber', 'betrieb']),
-                        mail: getV(['email', 'mail']),
-                        tel: getV(['mobil', 'handy'], ['telefon', 'festnetz']), // FIX: Nur Mobil, kein Telefon
-                        str: getV(['strasse', 'straße']),
-                        plz: getV(['plz']),
-                        ort: getV(['ort'])
+                        vorn: find(['vorname']),
+                        nachn: find(['nachname', 'name']),
+                        firma: find(['arbeitgeber', 'betrieb']),
+                        mail: find(['email', 'mail']),
+                        mobil: find(['mobil', 'handy'], ['telefon', 'festnetz']), // IGNORIERT TELEFON
+                        str: find(['strasse', 'straße']),
+                        plz: find(['plz']),
+                        ort: find(['ort'])
                     };
-                }).filter(m => m.nachname !== "");
+                }).filter(m => m.nachn !== "");
 
                 localStorage.setItem('nahvg_data', JSON.stringify(members));
                 localStorage.setItem('nahvg_og', file.name.replace(/\.[^/.]+$/, ""));
                 location.reload(); 
             } catch (err) {
-                alert("Fehler: " + err.message);
+                alert("Fehler beim Import.");
             }
         };
         reader.readAsArrayBuffer(file);
@@ -131,7 +127,7 @@
     function showApp() {
         document.getElementById('setupScreen').style.display = 'none';
         document.getElementById('appArea').style.display = 'block';
-        const ags = [...new Set(members.map(m => m.betrieb))].filter(a => a).sort();
+        const ags = [...new Set(members.map(m => m.firma))].filter(a => a).sort();
         const sel = document.getElementById('filterArbeitgeber');
         sel.innerHTML = '<option value="">Alle Betriebe</option>' + ags.map(a => `<option value="${a}">${a}</option>`).join('');
         filterData();
@@ -139,24 +135,23 @@
 
     function filterData() {
         const query = document.getElementById('searchInput').value.toLowerCase();
-        const agFilter = document.getElementById('filterArbeitgeber').value;
-        const container = document.getElementById('results');
+        const ag = document.getElementById('filterArbeitgeber').value;
         
         currentFiltered = members.filter(m => {
-            const content = (m.vorname + " " + m.nachname + " " + m.betrieb + " " + m.ort).toLowerCase();
-            return content.includes(query) && (!agFilter || m.betrieb === agFilter);
+            const match = (m.vorn + " " + m.nachn + " " + m.firma + " " + m.ort).toLowerCase().includes(query);
+            return match && (!ag || m.firma === ag);
         });
 
         document.getElementById('statsText').innerText = currentFiltered.length;
-        container.innerHTML = currentFiltered.map(m => `
+        document.getElementById('results').innerHTML = currentFiltered.map(m => `
             <div class="member-card">
                 <div class="m-body">
-                    <div class="m-title">${m.vorname} ${m.nachname}</div>
-                    <div style="font-size:0.9rem; margin: 5px 0;">🏢 <b>${m.betrieb || '-'}</b></div>
-                    <div style="font-size:0.85rem; color: #666;">🏠 ${m.str}, ${m.plz} ${m.ort}</div>
+                    <div class="m-title">${m.vorn} ${m.nachn}</div>
+                    <div>🏢 <b>${m.firma || '-'}</b></div>
+                    <div style="font-size:0.8rem; color:#666; margin-top:5px;">🏠 ${m.str}, ${m.plz} ${m.ort}</div>
                 </div>
                 <div class="contact-links">
-                    ${m.tel ? `<a href="tel:${m.tel.replace(/\D/g, '')}">📱 ${m.tel}</a>` : '<span style="color:#d93025">📱 k.A.</span>'}
+                    ${m.mobil ? `<a href="tel:${m.mobil.replace(/\D/g, '')}">📱 ${m.mobil}</a>` : '<span style="color:#d93025">📱 k.A.</span>'}
                     ${m.mail ? `<span onclick="copyMail('${m.mail}')">✉️ Kopieren</span>` : '<span>✉️ k.A.</span>'}
                 </div>
             </div>
@@ -164,23 +159,19 @@
     }
 
     function sendBulkEmail() {
-        const mails = currentFiltered.map(m => m.mail).filter(m => m && m.includes('@'));
-        if (mails.length === 0) return alert("Keine E-Mail-Adressen gefunden.");
-        window.location.href = `mailto:?bcc=${mails.join(',')}`;
+        const mails = currentFiltered.map(m => m.mail).filter(m => m.includes('@'));
+        if (mails.length > 0) window.location.href = "mailto:?bcc=" + mails.join(',');
     }
 
-    function copyMail(email) {
-        navigator.clipboard.writeText(email);
+    function copyMail(m) {
+        navigator.clipboard.writeText(m);
         const t = document.getElementById("toast");
         t.className = "show";
         setTimeout(() => t.className = "", 2000);
     }
 
     function resetApp() {
-        if(confirm("Daten wirklich löschen?")) {
-            localStorage.clear();
-            location.reload();
-        }
+        if(confirm("Daten löschen?")) { localStorage.clear(); location.reload(); }
     }
 </script>
 </body>
