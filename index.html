@@ -11,15 +11,23 @@
         :root { --nahvg-blue: #003a66; --nahvg-yellow: #ffcc00; --success-green: #28a745; --alert-red: #d93025; --text-dark: #333; }
         body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--nahvg-blue); margin: 0; padding: 0; color: var(--text-dark); min-height: 100vh; }
         header { background-color: var(--nahvg-blue); color: white; padding: 45px 15px 25px 15px; text-align: center; border-bottom: 4px solid var(--nahvg-yellow); position: relative; }
-        .container { padding: 15px; max-width: 1200px; margin: auto; }
+        .container { padding: 15px; max-width: 1400px; margin: auto; }
         .app-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 600px; margin: 0 auto 15px auto; }
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
         .stats-bar { background-color: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 12px; border-radius: 8px; margin: 10px 0; font-weight: bold; text-align: center; border: 2px solid var(--nahvg-blue); }
-        .btn-email-all { background-color: var(--success-green); color: white; padding: 16px; border: none; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; display: none; margin-bottom: 10px; }
-        #results { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 20px; }
-        .member-card { background: white; border-radius: 12px; border-left: 6px solid var(--nahvg-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 100%; display: flex; flex-direction: column; overflow: hidden; }
-        @media (min-width: 600px) { .member-card { width: calc(50% - 10px); } }
-        @media (min-width: 1000px) { .member-card { width: calc(33.33% - 15px); } }
+        
+        #results { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 15px; 
+            margin-top: 20px; 
+        }
+
+        /* Responsive Design: Desktop dreispaltig, Tablet zweispaltig */
+        @media (min-width: 768px) { #results { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 1100px) { #results { grid-template-columns: repeat(3, 1fr); } }
+
+        .member-card { background: white; border-radius: 12px; border-left: 6px solid var(--nahvg-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; }
         .m-body { padding: 18px; flex-grow: 1; }
         .m-title { font-weight: bold; color: var(--nahvg-blue); font-size: 1.2rem; }
         .contact-links { background-color: #eceff1; padding: 14px; border-top: 1.5px solid #d1d9e0; display: flex; justify-content: space-around; }
@@ -39,7 +47,6 @@
 <div class="container">
     <div id="setupScreen" class="app-card">
         <h3 style="text-align: center;">Excel-Datei importieren</h3>
-        <p style="text-align: center; font-size: 0.9rem; color: #555;">Wähle die aktuelle Mitgliederliste aus.</p>
         <label for="fileInput" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI AUSWÄHLEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
@@ -49,7 +56,6 @@
             <input type="text" id="searchInput" placeholder="Suchen..." onkeyup="filterData()">
             <select id="filterArbeitgeber" onchange="filterData()"></select>
             <div id="statsDisplay" class="stats-bar">👥 <span id="statsText">0</span> Mitglieder</div>
-            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Sammel-Mail (BCC)</button>
             <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; width:100%; cursor:pointer; margin-top:10px;">Andere Datei laden</button>
         </div>
         <div id="results"></div>
@@ -62,18 +68,12 @@
     let members = [];
 
     window.onload = function() {
-        if (typeof XLSX === 'undefined') {
-            alert("FEHLER: Die Excel-Bibliothek konnte nicht geladen werden. Bitte prüfe deine Internetverbindung beim ersten Start.");
-        }
-        
         const savedData = localStorage.getItem('nahvg_data');
         const savedOG = localStorage.getItem('nahvg_og');
         if (savedData) {
             members = JSON.parse(savedData);
             document.getElementById('ogNameDisplay').innerText = savedOG;
             showApp();
-        } else {
-            document.getElementById('ogNameDisplay').innerText = "Bereit zum Import";
         }
         document.getElementById('fileInput').addEventListener('change', processFile);
     };
@@ -86,36 +86,37 @@
         reader.onload = function(event) {
             try {
                 const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
+                const workbook = XLSX.read(data, {type: 'array', cellDates: true});
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet, {defval: ""});
 
-                // Spaltennamen-Mapping (Sucht flexibel nach Namen)
                 members = json.map(row => {
-                    const findKey = (names) => {
-                        const key = Object.keys(row).find(k => names.some(n => k.toLowerCase().includes(n.toLowerCase())));
-                        return key ? row[key] : "";
+                    // Robuste Spaltenerkennung
+                    const getVal = (names) => {
+                        const key = Object.keys(row).find(k => 
+                            names.some(n => k.trim().toLowerCase() === n.toLowerCase() || k.toLowerCase().includes(n.toLowerCase()))
+                        );
+                        return key ? String(row[key]).trim() : "";
                     };
 
                     return {
-                        vorname: findKey(['Vorname', 'First']),
-                        nachname: findKey(['Nachname', 'Name', 'Last', 'Mitglied']),
-                        betrieb: findKey(['Arbeitgeber', 'Betrieb', 'Firma', 'Unternehmen']),
-                        mail: findKey(['E-Mail', 'Email', 'Mail']),
-                        tel: findKey(['Mobil', 'Telefon', 'Handy', 'Tel']),
-                        str: findKey(['Straße', 'Strasse', 'Street']),
-                        plz: findKey(['PLZ', 'Postleitzahl']),
-                        ort: findKey(['Ort', 'Stadt', 'City'])
+                        vorname: getVal(['Vorname', 'First']),
+                        nachname: getVal(['Nachname', 'Name', 'Mitglied']),
+                        betrieb: getVal(['Arbeitgeber', 'Betrieb', 'Firma']),
+                        mail: getVal(['E-Mail', 'Email', 'Mail']),
+                        // Suche explizit nach "Mobil" zuerst
+                        tel: getVal(['Mobil', 'Handy', 'Mobile', 'Telefon', 'Tel']),
+                        str: getVal(['Straße', 'Strasse', 'Street']),
+                        plz: getVal(['PLZ']),
+                        ort: getVal(['Ort', 'Stadt'])
                     };
                 }).filter(m => m.nachname !== "");
 
-                if (members.length === 0) throw new Error("Keine Mitglieder mit Namen gefunden.");
+                if (members.length === 0) throw new Error("Keine Daten gefunden.");
 
-                const ogName = file.name.replace(/\.[^/.]+$/, "");
                 localStorage.setItem('nahvg_data', JSON.stringify(members));
-                localStorage.setItem('nahvg_og', ogName);
-                document.getElementById('ogNameDisplay').innerText = ogName;
-                showApp();
+                localStorage.setItem('nahvg_og', file.name.replace(/\.[^/.]+$/, ""));
+                location.reload(); 
             } catch (err) {
                 alert("Fehler beim Laden: " + err.message);
             }
@@ -154,7 +155,7 @@
                     <div style="font-size:0.85rem; color: #666;">🏠 ${m.str}, ${m.plz} ${m.ort}</div>
                 </div>
                 <div class="contact-links">
-                    ${m.tel ? `<a href="tel:${m.tel}">📞 Anrufen</a>` : '<span>📞 k.A.</span>'}
+                    ${m.tel ? `<a href="tel:${m.tel.replace(/\s+/g, '')}">📞 ${m.tel}</a>` : '<span>📞 k.A.</span>'}
                     ${m.mail ? `<span onclick="copyMail('${m.mail}')">✉️ Kopieren</span>` : '<span>✉️ k.A.</span>'}
                 </div>
             </div>
@@ -169,7 +170,7 @@
     }
 
     function resetApp() {
-        if(confirm("Daten wirklich löschen?")) {
+        if(confirm("Daten löschen?")) {
             localStorage.clear();
             location.reload();
         }
