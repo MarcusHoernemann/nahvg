@@ -8,9 +8,9 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
 
     <style>
-        :root { --nahvg-blue: #003a66; --nahvg-yellow: #ffcc00; --success-green: #28a745; --alert-red: #d93025; --text-dark: #333; }
+        :root { --nahvg-blue: #003a66; --nahvg-yellow: #ffcc00; --success-green: #28a745; --text-dark: #333; }
         body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--nahvg-blue); margin: 0; padding: 0; color: var(--text-dark); min-height: 100vh; }
-        header { background-color: var(--nahvg-blue); color: white; padding: 45px 15px 25px 15px; text-align: center; border-bottom: 4px solid var(--nahvg-yellow); position: relative; }
+        header { background-color: var(--nahvg-blue); color: white; padding: 45px 15px 25px 15px; text-align: center; border-bottom: 4px solid var(--nahvg-yellow); }
         .container { padding: 15px; max-width: 1400px; margin: auto; }
         .app-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 600px; margin: 0 auto 15px auto; }
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
@@ -33,14 +33,13 @@
 <body>
 
 <header>
-    <h1 onclick="showDebugInfo()" style="cursor:help">NahVG</h1>
-    <h2 id="ogNameDisplay">Lade System...</h2>
+    <h1>NahVG</h1>
+    <h2 id="ogNameDisplay">System bereit</h2>
 </header>
 
 <div class="container">
     <div id="setupScreen" class="app-card">
         <h3 style="text-align: center;">Excel-Datei importieren</h3>
-        <p style="text-align: center; font-size: 0.9rem;">Die App priorisiert das Feld <b>Mobil</b>.</p>
         <label for="fileInput" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI AUSWÄHLEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
@@ -60,7 +59,6 @@
 
 <script>
     let members = [];
-    let foundColumns = [];
 
     window.onload = function() {
         const savedData = localStorage.getItem('nahvg_data');
@@ -82,40 +80,29 @@
             try {
                 const data = new Uint8Array(event.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(sheet, {defval: ""});
-
-                if (json.length > 0) foundColumns = Object.keys(json[0]);
+                const sheetName = workbook.SheetNames[0];
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {defval: ""});
 
                 members = json.map(row => {
-                    const keys = Object.keys(row);
-                    
-                    const getByTags = (tags) => {
-                        const foundKey = keys.find(k => {
-                            const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-                            return tags.some(t => cleanK.includes(t.toLowerCase()));
-                        });
-                        return foundKey ? String(row[foundKey]).trim() : "";
-                    };
-
-                    // Spezielle Logik für Mobilnummer
-                    const findMobil = () => {
-                        // 1. Suche nach "Mobil" oder "Handy"
-                        let num = getByTags(['mobil', 'handy']);
-                        // 2. Falls leer, nimm "Telefon"
-                        if (!num) num = getByTags(['telefon', 'tel', 'phone']);
-                        return num;
+                    // Direkte Zuweisung über alle bekannten Varianten
+                    const find = (keys) => {
+                        for (let k in row) {
+                            if (keys.some(key => k.toLowerCase().trim().includes(key.toLowerCase()))) {
+                                return String(row[k]).trim();
+                            }
+                        }
+                        return "";
                     };
 
                     return {
-                        vorname: getByTags(['vorname']),
-                        nachname: getByTags(['nachname', 'name', 'mitglied']),
-                        betrieb: getByTags(['arbeitgeber', 'betrieb']),
-                        mail: getByTags(['email', 'mail']),
-                        tel: findMobil(),
-                        str: getByTags(['strasse', 'straße']),
-                        plz: getByTags(['plz']),
-                        ort: getByTags(['ort'])
+                        vorname: find(['vorname']),
+                        nachname: find(['nachname', 'name']),
+                        betrieb: find(['arbeitgeber', 'betrieb']),
+                        mail: find(['email', 'mail']),
+                        tel: find(['mobil', 'handy']), // Hier wird NUR nach Mobil/Handy gesucht
+                        str: find(['strasse', 'straße']),
+                        plz: find(['plz']),
+                        ort: find(['ort'])
                     };
                 }).filter(m => m.nachname !== "");
 
@@ -127,14 +114,6 @@
             }
         };
         reader.readAsArrayBuffer(file);
-    }
-
-    function showDebugInfo() {
-        if (foundColumns.length > 0) {
-            alert("Spalten in deiner Datei:\n" + foundColumns.join(", "));
-        } else {
-            alert("Noch keine Datei geladen.");
-        }
     }
 
     function showApp() {
@@ -151,7 +130,7 @@
         const agFilter = document.getElementById('filterArbeitgeber').value;
         const container = document.getElementById('results');
         const filtered = members.filter(m => {
-            const matchesSearch = (m.vorname + m.nachname + m.betrieb + m.ort).toLowerCase().includes(query);
+            const matchesSearch = (m.vorname + " " + m.nachname + " " + m.betrieb + " " + m.ort).toLowerCase().includes(query);
             return matchesSearch && (!agFilter || m.betrieb === agFilter);
         });
 
@@ -164,7 +143,7 @@
                     <div style="font-size:0.85rem; color: #666;">🏠 ${m.str}, ${m.plz} ${m.ort}</div>
                 </div>
                 <div class="contact-links">
-                    ${m.tel ? `<a href="tel:${m.tel.replace(/\s+/g, '')}">📱 ${m.tel}</a>` : '<span style="color:#d93025">📱 kein Mobil</span>'}
+                    ${m.tel ? `<a href="tel:${m.tel.replace(/\D/g, '')}">📱 ${m.tel}</a>` : '<span style="color:#999">📱 kein Mobil</span>'}
                     ${m.mail ? `<span onclick="copyMail('${m.mail}')">✉️ Mail</span>` : '<span>✉️ k.A.</span>'}
                 </div>
             </div>
