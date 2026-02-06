@@ -40,6 +40,7 @@
 <div class="container">
     <div id="setupScreen" class="app-card">
         <h3 style="text-align: center;">Excel-Datei importieren</h3>
+        <p style="text-align: center; color: #d93025; font-weight: bold;">Fokus: Spalte "Mobil"</p>
         <label for="fileInput" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI AUSWÄHLEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
@@ -80,29 +81,33 @@
             try {
                 const data = new Uint8Array(event.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
-                const sheetName = workbook.SheetNames[0];
-                const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {defval: ""});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                // RAW Import um Formatierungsprobleme zu vermeiden
+                const json = XLSX.utils.sheet_to_json(sheet, {defval: ""});
 
                 members = json.map(row => {
-                    // Direkte Zuweisung über alle bekannten Varianten
-                    const find = (keys) => {
-                        for (let k in row) {
-                            if (keys.some(key => k.toLowerCase().trim().includes(key.toLowerCase()))) {
-                                return String(row[k]).trim();
-                            }
-                        }
-                        return "";
+                    const keys = Object.keys(row);
+                    
+                    const findValue = (targets, avoid = []) => {
+                        const key = keys.find(k => {
+                            const lowK = k.toLowerCase().trim();
+                            const matchesTarget = targets.some(t => lowK.includes(t.toLowerCase()));
+                            const avoidsConflict = avoid.length === 0 || !avoid.some(a => lowK.includes(a.toLowerCase()));
+                            return matchesTarget && avoidsConflict;
+                        });
+                        return key ? String(row[key]).trim() : "";
                     };
 
                     return {
-                        vorname: find(['vorname']),
-                        nachname: find(['nachname', 'name']),
-                        betrieb: find(['arbeitgeber', 'betrieb']),
-                        mail: find(['email', 'mail']),
-                        tel: find(['mobil', 'handy']), // Hier wird NUR nach Mobil/Handy gesucht
-                        str: find(['strasse', 'straße']),
-                        plz: find(['plz']),
-                        ort: find(['ort'])
+                        vorname: findValue(['vorname']),
+                        nachname: findValue(['nachname', 'name']),
+                        betrieb: findValue(['arbeitgeber', 'betrieb']),
+                        mail: findValue(['email', 'mail']),
+                        // STRENGE LOGIK: "Mobil" oder "Handy", aber NIEMALS "Telefon"
+                        tel: findValue(['mobil', 'handy'], ['telefon', 'festnetz', 'privat']),
+                        str: findValue(['strasse', 'straße']),
+                        plz: findValue(['plz']),
+                        ort: findValue(['ort'])
                     };
                 }).filter(m => m.nachname !== "");
 
@@ -130,8 +135,8 @@
         const agFilter = document.getElementById('filterArbeitgeber').value;
         const container = document.getElementById('results');
         const filtered = members.filter(m => {
-            const matchesSearch = (m.vorname + " " + m.nachname + " " + m.betrieb + " " + m.ort).toLowerCase().includes(query);
-            return matchesSearch && (!agFilter || m.betrieb === agFilter);
+            const content = (m.vorname + " " + m.nachname + " " + m.betrieb + " " + m.ort).toLowerCase();
+            return content.includes(query) && (!agFilter || m.betrieb === agFilter);
         });
 
         document.getElementById('statsText').innerText = filtered.length;
