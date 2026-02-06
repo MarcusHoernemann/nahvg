@@ -13,20 +13,19 @@
         header { background-color: var(--nahvg-blue); color: white; padding: 45px 15px 25px 15px; text-align: center; border-bottom: 4px solid var(--nahvg-yellow); }
         .container { padding: 15px; max-width: 1400px; margin: auto; }
         
-        /* Die App-Card mit Suche und Statistik */
-        .app-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 600px; margin: 0 auto 15px auto; position: relative; }
+        .app-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 600px; margin: 0 auto 15px auto; }
         
+        /* Infobar oben mit Statistik links und Email rechts */
+        .info-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .stats-box { background-color: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 8px 12px; border-radius: 6px; font-weight: bold; border: 2px solid var(--nahvg-blue); }
+        .email-btn { background-color: var(--nahvg-blue); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
+        .email-btn:hover { background-color: #002a4d; }
+
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
         
-        /* Statistik-Bar oben links innerhalb der Card */
-        .stats-bar { background-color: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 8px 15px; border-radius: 6px; font-weight: bold; text-align: center; margin-bottom: 10px; display: inline-block; border: 2px solid var(--nahvg-blue); }
-        
         #results { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
-        
-        /* Desktop: Dreispaltig */
+        @media (min-width: 768px) { #results { grid-template-columns: repeat(2, 1fr); } }
         @media (min-width: 1100px) { #results { grid-template-columns: repeat(3, 1fr); } }
-        /* Tablet: Zweispaltig */
-        @media (min-width: 768px) and (max-width: 1099px) { #results { grid-template-columns: repeat(2, 1fr); } }
 
         .member-card { background: white; border-radius: 12px; border-left: 6px solid var(--nahvg-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; }
         .m-body { padding: 18px; flex-grow: 1; }
@@ -50,17 +49,19 @@
 <div class="container">
     <div id="setupScreen" class="app-card">
         <h3 style="text-align: center;">Excel-Datei importieren</h3>
-        <p style="text-align: center;">Bitte Spalte "Mobil" bereitstellen.</p>
         <label for="fileInput" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI AUSWÄHLEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
 
     <div id="appArea" style="display:none;">
         <div class="app-card">
-            <div class="stats-bar">👥 <span id="statsText">0</span> Mitglieder</div>
-            <input type="text" id="searchInput" placeholder="Suchen nach Name, Ort, Mobil..." onkeyup="filterData()">
+            <div class="info-bar">
+                <div class="stats-box">👥 <span id="statsText">0</span></div>
+                <button class="email-btn" id="bulkEmailBtn" onclick="sendBulkEmail()">📧 Sammelemail</button>
+            </div>
+            <input type="text" id="searchInput" placeholder="Suchen..." onkeyup="filterData()">
             <select id="filterArbeitgeber" onchange="filterData()"></select>
-            <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; width:100%; cursor:pointer; margin-top:10px;">Andere Datei laden</button>
+            <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; width:100%; cursor:pointer; margin-top:10px; font-size: 0.8rem;">Andere Datei laden</button>
         </div>
         <div id="results"></div>
     </div>
@@ -70,6 +71,7 @@
 
 <script>
     let members = [];
+    let currentFiltered = [];
 
     window.onload = function() {
         const savedData = localStorage.getItem('nahvg_data');
@@ -90,36 +92,29 @@
         reader.onload = function(event) {
             try {
                 const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+                const workbook = XLSX.read(data, {type: 'array'});
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(sheet, {raw: false, defval: ""});
+                const json = XLSX.utils.sheet_to_json(sheet, {defval: ""});
 
                 members = json.map(row => {
                     const keys = Object.keys(row);
-                    
-                    // Sucht wert für Mobil, ignoriert alles was "Telefon" heißt
-                    const findMobil = () => {
+                    const getV = (tags, avoid = []) => {
                         const key = keys.find(k => {
-                            const kL = k.toLowerCase().trim();
-                            return kL.includes('mobil') && !kL.includes('telefon');
+                            const kl = k.toLowerCase().trim();
+                            return tags.some(t => kl.includes(t)) && !avoid.some(a => kl.includes(a));
                         });
                         return key ? String(row[key]).trim() : "";
                     };
 
-                    const getF = (tags) => {
-                        const key = keys.find(k => tags.some(t => k.toLowerCase().includes(t)));
-                        return key ? String(row[key]).trim() : "";
-                    };
-
                     return {
-                        vorname: getF(['vorname']),
-                        nachname: getF(['nachname', 'name']),
-                        betrieb: getF(['arbeitgeber', 'betrieb']),
-                        mail: getF(['email', 'mail']),
-                        tel: findMobil(),
-                        str: getF(['strasse', 'straße']),
-                        plz: getF(['plz']),
-                        ort: getF(['ort'])
+                        vorname: getV(['vorname']),
+                        nachname: getV(['nachname', 'name']),
+                        betrieb: getV(['arbeitgeber', 'betrieb']),
+                        mail: getV(['email', 'mail']),
+                        tel: getV(['mobil', 'handy'], ['telefon', 'festnetz']), // FIX: Nur Mobil, kein Telefon
+                        str: getV(['strasse', 'straße']),
+                        plz: getV(['plz']),
+                        ort: getV(['ort'])
                     };
                 }).filter(m => m.nachname !== "");
 
@@ -147,13 +142,13 @@
         const agFilter = document.getElementById('filterArbeitgeber').value;
         const container = document.getElementById('results');
         
-        const filtered = members.filter(m => {
-            const content = (m.vorname + " " + m.nachname + " " + m.betrieb + " " + m.ort + " " + m.tel).toLowerCase();
+        currentFiltered = members.filter(m => {
+            const content = (m.vorname + " " + m.nachname + " " + m.betrieb + " " + m.ort).toLowerCase();
             return content.includes(query) && (!agFilter || m.betrieb === agFilter);
         });
 
-        document.getElementById('statsText').innerText = filtered.length;
-        container.innerHTML = filtered.map(m => `
+        document.getElementById('statsText').innerText = currentFiltered.length;
+        container.innerHTML = currentFiltered.map(m => `
             <div class="member-card">
                 <div class="m-body">
                     <div class="m-title">${m.vorname} ${m.nachname}</div>
@@ -161,11 +156,17 @@
                     <div style="font-size:0.85rem; color: #666;">🏠 ${m.str}, ${m.plz} ${m.ort}</div>
                 </div>
                 <div class="contact-links">
-                    ${m.tel ? `<a href="tel:${m.tel.replace(/\D/g, '')}">📱 ${m.tel}</a>` : '<span style="color:#d93025">📱 kein Mobil</span>'}
-                    ${m.mail ? `<span onclick="copyMail('${m.mail}')">✉️ Mail</span>` : '<span>✉️ k.A.</span>'}
+                    ${m.tel ? `<a href="tel:${m.tel.replace(/\D/g, '')}">📱 ${m.tel}</a>` : '<span style="color:#d93025">📱 k.A.</span>'}
+                    ${m.mail ? `<span onclick="copyMail('${m.mail}')">✉️ Kopieren</span>` : '<span>✉️ k.A.</span>'}
                 </div>
             </div>
         `).join('');
+    }
+
+    function sendBulkEmail() {
+        const mails = currentFiltered.map(m => m.mail).filter(m => m && m.includes('@'));
+        if (mails.length === 0) return alert("Keine E-Mail-Adressen gefunden.");
+        window.location.href = `mailto:?bcc=${mails.join(',')}`;
     }
 
     function copyMail(email) {
@@ -176,7 +177,7 @@
     }
 
     function resetApp() {
-        if(confirm("Daten löschen?")) {
+        if(confirm("Daten wirklich löschen?")) {
             localStorage.clear();
             location.reload();
         }
