@@ -40,14 +40,14 @@
 <div class="container">
     <div id="setupScreen" class="app-card">
         <h3 style="text-align: center;">Excel-Datei importieren</h3>
-        <p style="text-align: center; font-weight: bold; color: var(--nahvg-blue);">Es wird ausschließlich die Spalte "Mobil" verwendet.</p>
+        <p style="text-align: center; color: var(--nahvg-blue);">Nur die Spalte <b>Mobil</b> wird eingelesen.</p>
         <label for="fileInput" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI AUSWÄHLEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
 
     <div id="appArea" style="display:none;">
         <div class="app-card">
-            <input type="text" id="searchInput" placeholder="Nach Name, Betrieb oder Mobil suchen..." onkeyup="filterData()">
+            <input type="text" id="searchInput" placeholder="Suchen..." onkeyup="filterData()">
             <select id="filterArbeitgeber" onchange="filterData()"></select>
             <div id="statsDisplay" class="stats-bar">👥 <span id="statsText">0</span> Mitglieder</div>
             <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; width:100%; cursor:pointer; margin-top:10px;">Andere Datei laden</button>
@@ -87,29 +87,26 @@
                 members = json.map(row => {
                     const keys = Object.keys(row);
                     
-                    // Hilfsfunktion: Sucht nur nach Übereinstimmung, schließt "Telefon" aktiv aus
-                    const getMobil = () => {
-                        const key = keys.find(k => {
-                            const kLow = k.toLowerCase();
-                            return kLow.includes('mobil') && !kLow.includes('telefon');
-                        });
+                    // Harte Zuordnung: Nur wenn "Mobil" drin steht, wird es genommen.
+                    const getMobilOnly = () => {
+                        const key = keys.find(k => k.toLowerCase().trim() === 'mobil');
                         return key ? String(row[key]).trim() : "";
                     };
 
-                    const getField = (tags) => {
-                        const key = keys.find(k => tags.some(t => k.toLowerCase().includes(t)));
+                    const getField = (tag) => {
+                        const key = keys.find(k => k.toLowerCase().includes(tag));
                         return key ? String(row[key]).trim() : "";
                     };
 
                     return {
-                        vorname: getField(['vorname']),
-                        nachname: getField(['nachname', 'name']),
-                        betrieb: getField(['arbeitgeber', 'betrieb']),
-                        mail: getField(['email', 'mail']),
-                        tel: getMobil(), // Greift NUR Mobil ab
-                        str: getField(['strasse', 'straße']),
-                        plz: getField(['plz']),
-                        ort: getField(['ort'])
+                        vorname: getField('vorname'),
+                        nachname: getField('nachname') || getField('name'),
+                        betrieb: getField('betrieb') || getField('arbeitgeber'),
+                        mail: getField('mail'),
+                        tel: getMobilOnly(), 
+                        str: getField('str'),
+                        plz: getField('plz'),
+                        ort: getField('ort')
                     };
                 }).filter(m => m.nachname !== "");
 
@@ -117,7 +114,7 @@
                 localStorage.setItem('nahvg_og', file.name.replace(/\.[^/.]+$/, ""));
                 location.reload(); 
             } catch (err) {
-                alert("Fehler beim Import: " + err.message);
+                alert("Fehler: " + err.message);
             }
         };
         reader.readAsArrayBuffer(file);
@@ -137,7 +134,7 @@
         const agFilter = document.getElementById('filterArbeitgeber').value;
         const container = document.getElementById('results');
         const filtered = members.filter(m => {
-            const content = (m.vorname + " " + m.nachname + " " + m.betrieb + " " + m.ort + " " + m.tel).toLowerCase();
+            const content = (m.vorname + " " + m.nachname + " " + m.betrieb).toLowerCase();
             return content.includes(query) && (!agFilter || m.betrieb === agFilter);
         });
 
