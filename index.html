@@ -40,14 +40,14 @@
 <div class="container">
     <div id="setupScreen" class="app-card">
         <h3 style="text-align: center;">Excel-Datei importieren</h3>
-        <p style="text-align: center; color: #d93025; font-weight: bold;">Fokus: Spalte "Mobil"</p>
+        <p style="text-align: center; font-weight: bold; color: var(--nahvg-blue);">Es wird ausschließlich die Spalte "Mobil" verwendet.</p>
         <label for="fileInput" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI AUSWÄHLEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
 
     <div id="appArea" style="display:none;">
         <div class="app-card">
-            <input type="text" id="searchInput" placeholder="Suchen..." onkeyup="filterData()">
+            <input type="text" id="searchInput" placeholder="Nach Name, Betrieb oder Mobil suchen..." onkeyup="filterData()">
             <select id="filterArbeitgeber" onchange="filterData()"></select>
             <div id="statsDisplay" class="stats-bar">👥 <span id="statsText">0</span> Mitglieder</div>
             <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; width:100%; cursor:pointer; margin-top:10px;">Andere Datei laden</button>
@@ -82,32 +82,34 @@
                 const data = new Uint8Array(event.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                // RAW Import um Formatierungsprobleme zu vermeiden
                 const json = XLSX.utils.sheet_to_json(sheet, {defval: ""});
 
                 members = json.map(row => {
                     const keys = Object.keys(row);
                     
-                    const findValue = (targets, avoid = []) => {
+                    // Hilfsfunktion: Sucht nur nach Übereinstimmung, schließt "Telefon" aktiv aus
+                    const getMobil = () => {
                         const key = keys.find(k => {
-                            const lowK = k.toLowerCase().trim();
-                            const matchesTarget = targets.some(t => lowK.includes(t.toLowerCase()));
-                            const avoidsConflict = avoid.length === 0 || !avoid.some(a => lowK.includes(a.toLowerCase()));
-                            return matchesTarget && avoidsConflict;
+                            const kLow = k.toLowerCase();
+                            return kLow.includes('mobil') && !kLow.includes('telefon');
                         });
                         return key ? String(row[key]).trim() : "";
                     };
 
+                    const getField = (tags) => {
+                        const key = keys.find(k => tags.some(t => k.toLowerCase().includes(t)));
+                        return key ? String(row[key]).trim() : "";
+                    };
+
                     return {
-                        vorname: findValue(['vorname']),
-                        nachname: findValue(['nachname', 'name']),
-                        betrieb: findValue(['arbeitgeber', 'betrieb']),
-                        mail: findValue(['email', 'mail']),
-                        // STRENGE LOGIK: "Mobil" oder "Handy", aber NIEMALS "Telefon"
-                        tel: findValue(['mobil', 'handy'], ['telefon', 'festnetz', 'privat']),
-                        str: findValue(['strasse', 'straße']),
-                        plz: findValue(['plz']),
-                        ort: findValue(['ort'])
+                        vorname: getField(['vorname']),
+                        nachname: getField(['nachname', 'name']),
+                        betrieb: getField(['arbeitgeber', 'betrieb']),
+                        mail: getField(['email', 'mail']),
+                        tel: getMobil(), // Greift NUR Mobil ab
+                        str: getField(['strasse', 'straße']),
+                        plz: getField(['plz']),
+                        ort: getField(['ort'])
                     };
                 }).filter(m => m.nachname !== "");
 
@@ -115,7 +117,7 @@
                 localStorage.setItem('nahvg_og', file.name.replace(/\.[^/.]+$/, ""));
                 location.reload(); 
             } catch (err) {
-                alert("Fehler: " + err.message);
+                alert("Fehler beim Import: " + err.message);
             }
         };
         reader.readAsArrayBuffer(file);
@@ -135,7 +137,7 @@
         const agFilter = document.getElementById('filterArbeitgeber').value;
         const container = document.getElementById('results');
         const filtered = members.filter(m => {
-            const content = (m.vorname + " " + m.nachname + " " + m.betrieb + " " + m.ort).toLowerCase();
+            const content = (m.vorname + " " + m.nachname + " " + m.betrieb + " " + m.ort + " " + m.tel).toLowerCase();
             return content.includes(query) && (!agFilter || m.betrieb === agFilter);
         });
 
