@@ -33,14 +33,14 @@
 <body>
 
 <header>
-    <h1>NahVG</h1>
+    <h1 onclick="showDebugInfo()" style="cursor:help">NahVG</h1>
     <h2 id="ogNameDisplay">Lade System...</h2>
 </header>
 
 <div class="container">
     <div id="setupScreen" class="app-card">
         <h3 style="text-align: center;">Excel-Datei importieren</h3>
-        <p style="text-align: center; font-size: 0.9rem;">Es wird ausschließlich die Spalte <b>Mobil</b> für Anrufe genutzt.</p>
+        <p style="text-align: center; font-size: 0.9rem;">Die App priorisiert das Feld <b>Mobil</b>.</p>
         <label for="fileInput" style="background: var(--nahvg-yellow); color: var(--nahvg-blue); padding: 18px; display: block; text-align: center; border-radius: 10px; font-weight: bold; cursor: pointer;">📂 DATEI AUSWÄHLEN</label>
         <input type="file" id="fileInput" accept=".xlsx, .xls">
     </div>
@@ -60,6 +60,7 @@
 
 <script>
     let members = [];
+    let foundColumns = [];
 
     window.onload = function() {
         const savedData = localStorage.getItem('nahvg_data');
@@ -84,32 +85,37 @@
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet, {defval: ""});
 
+                if (json.length > 0) foundColumns = Object.keys(json[0]);
+
                 members = json.map(row => {
                     const keys = Object.keys(row);
                     
-                    const getVal = (exactName) => {
-                        // Findet die Spalte, die exakt so heißt oder "Mobil" im Namen hat, aber KEIN "Telefon"
+                    const getByTags = (tags) => {
                         const foundKey = keys.find(k => {
-                            const kClean = k.toLowerCase().trim();
-                            return kClean.includes(exactName.toLowerCase()) && !kClean.includes('telefon');
+                            const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            return tags.some(t => cleanK.includes(t.toLowerCase()));
                         });
                         return foundKey ? String(row[foundKey]).trim() : "";
                     };
 
-                    const getGeneral = (frags) => {
-                        const foundKey = keys.find(k => frags.some(f => k.toLowerCase().includes(f.toLowerCase())));
-                        return foundKey ? String(row[foundKey]).trim() : "";
+                    // Spezielle Logik für Mobilnummer
+                    const findMobil = () => {
+                        // 1. Suche nach "Mobil" oder "Handy"
+                        let num = getByTags(['mobil', 'handy']);
+                        // 2. Falls leer, nimm "Telefon"
+                        if (!num) num = getByTags(['telefon', 'tel', 'phone']);
+                        return num;
                     };
 
                     return {
-                        vorname: getGeneral(['vorname']),
-                        nachname: getGeneral(['nachname', 'name', 'mitglied']),
-                        betrieb: getGeneral(['arbeitgeber', 'betrieb']),
-                        mail: getGeneral(['email', 'mail']),
-                        tel: getVal('mobil'), // Sucht nur nach "Mobil", schließt "Telefon" aus
-                        str: getGeneral(['strasse', 'straße']),
-                        plz: getGeneral(['plz']),
-                        ort: getGeneral(['ort'])
+                        vorname: getByTags(['vorname']),
+                        nachname: getByTags(['nachname', 'name', 'mitglied']),
+                        betrieb: getByTags(['arbeitgeber', 'betrieb']),
+                        mail: getByTags(['email', 'mail']),
+                        tel: findMobil(),
+                        str: getByTags(['strasse', 'straße']),
+                        plz: getByTags(['plz']),
+                        ort: getByTags(['ort'])
                     };
                 }).filter(m => m.nachname !== "");
 
@@ -121,6 +127,14 @@
             }
         };
         reader.readAsArrayBuffer(file);
+    }
+
+    function showDebugInfo() {
+        if (foundColumns.length > 0) {
+            alert("Spalten in deiner Datei:\n" + foundColumns.join(", "));
+        } else {
+            alert("Noch keine Datei geladen.");
+        }
     }
 
     function showApp() {
@@ -150,7 +164,7 @@
                     <div style="font-size:0.85rem; color: #666;">🏠 ${m.str}, ${m.plz} ${m.ort}</div>
                 </div>
                 <div class="contact-links">
-                    ${m.tel ? `<a href="tel:${m.tel.replace(/\s+/g, '')}">📱 ${m.tel}</a>` : '<span style="color:#999">📱 kein Mobil</span>'}
+                    ${m.tel ? `<a href="tel:${m.tel.replace(/\s+/g, '')}">📱 ${m.tel}</a>` : '<span style="color:#d93025">📱 kein Mobil</span>'}
                     ${m.mail ? `<span onclick="copyMail('${m.mail}')">✉️ Mail</span>` : '<span>✉️ k.A.</span>'}
                 </div>
             </div>
