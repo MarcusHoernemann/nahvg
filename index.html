@@ -23,15 +23,14 @@
             margin-top: 20px; 
         }
 
-        /* Responsive Design: Desktop dreispaltig, Tablet zweispaltig */
         @media (min-width: 768px) { #results { grid-template-columns: repeat(2, 1fr); } }
         @media (min-width: 1100px) { #results { grid-template-columns: repeat(3, 1fr); } }
 
         .member-card { background: white; border-radius: 12px; border-left: 6px solid var(--nahvg-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; }
         .m-body { padding: 18px; flex-grow: 1; }
         .m-title { font-weight: bold; color: var(--nahvg-blue); font-size: 1.2rem; }
-        .contact-links { background-color: #eceff1; padding: 14px; border-top: 1.5px solid #d1d9e0; display: flex; justify-content: space-around; }
-        .contact-links a, .contact-links span { color: var(--nahvg-blue); font-weight: bold; text-decoration: none; cursor: pointer; }
+        .contact-links { background-color: #eceff1; padding: 14px; border-top: 1.5px solid #d1d9e0; display: flex; justify-content: space-around; gap: 5px; }
+        .contact-links a, .contact-links span { color: var(--nahvg-blue); font-weight: bold; text-decoration: none; cursor: pointer; font-size: 0.85rem; text-align: center; flex: 1; }
         #fileInput { display: none; }
         #toast { visibility: hidden; background: var(--success-green); color: white; text-align: center; padding: 16px; position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); border-radius: 50px; z-index: 2000; }
         #toast.show { visibility: visible; }
@@ -86,33 +85,35 @@
         reader.onload = function(event) {
             try {
                 const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+                const workbook = XLSX.read(data, {type: 'array'});
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet, {defval: ""});
 
                 members = json.map(row => {
-                    // Robuste Spaltenerkennung
-                    const getVal = (names) => {
-                        const key = Object.keys(row).find(k => 
-                            names.some(n => k.trim().toLowerCase() === n.toLowerCase() || k.toLowerCase().includes(n.toLowerCase()))
-                        );
-                        return key ? String(row[key]).trim() : "";
+                    const keys = Object.keys(row);
+                    
+                    // Hilfsfunktion: Sucht den Wert basierend auf Wortfetzen im Spaltennamen
+                    const getByFragment = (fragments) => {
+                        const foundKey = keys.find(k => {
+                            const cleanK = k.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                            return fragments.some(f => cleanK.includes(f.toLowerCase()));
+                        });
+                        return foundKey ? String(row[foundKey]).trim() : "";
                     };
 
                     return {
-                        vorname: getVal(['Vorname', 'First']),
-                        nachname: getVal(['Nachname', 'Name', 'Mitglied']),
-                        betrieb: getVal(['Arbeitgeber', 'Betrieb', 'Firma']),
-                        mail: getVal(['E-Mail', 'Email', 'Mail']),
-                        // Suche explizit nach "Mobil" zuerst
-                        tel: getVal(['Mobil', 'Handy', 'Mobile', 'Telefon', 'Tel']),
-                        str: getVal(['Straße', 'Strasse', 'Street']),
-                        plz: getVal(['PLZ']),
-                        ort: getVal(['Ort', 'Stadt'])
+                        vorname: getByFragment(['vorname', 'first']),
+                        nachname: getByFragment(['nachname', 'last', 'name', 'mitglied']),
+                        betrieb: getByFragment(['arbeitgeber', 'betrieb', 'firma']),
+                        mail: getByFragment(['email', 'mail']),
+                        tel: getByFragment(['mobil', 'handy', 'phone', 'tel', 'telefon']),
+                        str: getByFragment(['strasse', 'straße', 'street']),
+                        plz: getByFragment(['plz', 'zip']),
+                        ort: getByFragment(['ort', 'stadt', 'city'])
                     };
                 }).filter(m => m.nachname !== "");
 
-                if (members.length === 0) throw new Error("Keine Daten gefunden.");
+                if (members.length === 0) throw new Error("Keine Daten erkannt.");
 
                 localStorage.setItem('nahvg_data', JSON.stringify(members));
                 localStorage.setItem('nahvg_og', file.name.replace(/\.[^/.]+$/, ""));
