@@ -178,7 +178,7 @@
 
     <div class="dev-info">
         <b>Entwickler:</b> Marcus Hörnemann<br>
-        <b>Version:</b> 2.3.2<br>
+        <b>Version:</b> 2.3.3<br>
         <b>Status:</b> Stable Build (Lokal & Autark)
     </div>
 
@@ -323,31 +323,35 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                     </div>
                     <div class="contact-links">
                         ${tel ? `<a href="tel:${tel}">📞 Anrufen</a>` : '<span>📞 k.A.</span>'}
-                        ${email ? `<a href="mailto:${email}">✉️ Email</a>` : '<span>✉️ k.A.</span>'}
+                        ${email ? `<span onclick="copyAndMail('${email}')">✉️ Email</span>` : '<span>✉️ k.A.</span>'}
                     </div>
                 </div>`;
         });
     }
 
+    async function copyAndMail(email) {
+        try {
+            await navigator.clipboard.writeText(email);
+            showToast("E-Mail kopiert & geöffnet!");
+            window.location.href = `mailto:${email}`;
+        } catch (err) {
+            window.location.href = `mailto:${email}`;
+        }
+    }
+
     async function sendBulkEmail() {
         if (currentFilteredEmails.length === 0) return;
 
-        // Unterscheidung PC (Outlook/Windows nutzt oft ;) vs Mobile (Komma)
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const separator = isMobile ? ',' : ';';
         const bccList = currentFilteredEmails.join(separator);
 
         try {
-            // 1. In die Zwischenablage kopieren (funktioniert auf PC & Mobil)
             await navigator.clipboard.writeText(bccList);
-            showToast("Adressen kopiert!");
-            
-            // 2. Mail-Programm öffnen
+            showToast("Alle Adressen kopiert!");
             window.location.href = `mailto:?bcc=${bccList}`;
         } catch (err) {
-            // Fallback falls Clipboard API blockiert wird
             window.location.href = `mailto:?bcc=${bccList}`;
-            showToast("E-Mail Programm wird geöffnet...");
         }
     }
 
@@ -356,7 +360,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         m.style.display = (m.style.display === 'block') ? 'none' : 'block';
     }
 
-    function showToast(message, duration = 3000) {
+    function showToast(message, duration = 2500) {
         const t = document.getElementById("toast");
         t.innerText = message;
         t.className = "show";
