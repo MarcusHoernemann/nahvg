@@ -340,7 +340,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         try {
             // 1. In die Zwischenablage kopieren (funktioniert auf PC & Mobil)
             await navigator.clipboard.writeText(bccList);
-            showToast("Adressen kopiert & E-Mail geöffnet!");
+            showToast("Adressen kopiert!");
             
             // 2. Mail-Programm öffnen
             window.location.href = `mailto:?bcc=${bccList}`;
