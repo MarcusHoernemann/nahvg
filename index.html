@@ -146,7 +146,7 @@
             <div id="statsDisplay" class="stats-bar">
                 <span>👥</span> <span id="statsText">Berechne...</span>
             </div>
-            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Adressen kopieren</button>
+            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Sammelemail schreiben</button>
             <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; font-size:0.8rem; width:100%; cursor:pointer; margin-top:15px; opacity:0.7;">Ortsgruppe wechseln</button>
         </div>
         <div id="results"></div>
@@ -305,7 +305,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                     </div>
                     <div class="contact-links">
                         ${tel ? `<a href="tel:${tel}">📞 Anrufen</a>` : '<span>📞 k.A.</span>'}
-                        ${email ? `<span onclick="copyToClipboard('${email}', 'Adresse kopiert!')">✉️ Kopieren</span>` : '<span>✉️ k.A.</span>'}
+                        ${email ? `<span onclick="copyToClipboard('${email}', 'Adresse kopiert!')">✉️ E-Mail</span>` : '<span>✉️ k.A.</span>'}
                     </div>
                 </div>`;
         });
