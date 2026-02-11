@@ -146,7 +146,7 @@
             <div id="statsDisplay" class="stats-bar">
                 <span>👥</span> <span id="statsText">Berechne...</span>
             </div>
-            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Sammel-Mail schreiben</button>
+            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Sammel-Mail schreiben & kopieren</button>
             <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; font-size:0.8rem; width:100%; cursor:pointer; margin-top:15px; opacity:0.7;">Ortsgruppe wechseln</button>
         </div>
         <div id="results"></div>
@@ -178,7 +178,7 @@
 
     <div class="dev-info">
         <b>Entwickler:</b> Marcus Hörnemann<br>
-        <b>Version:</b> 2.3.1<br>
+        <b>Version:</b> 2.3.2<br>
         <b>Status:</b> Stable Build (Lokal & Autark)
     </div>
 
@@ -329,10 +329,26 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         });
     }
 
-    function sendBulkEmail() {
-        // Für mobile Geräte: Trennung durch Komma ist Standard für mailto
-        const bcc = currentFilteredEmails.join(',');
-        window.location.href = `mailto:?bcc=${bcc}`;
+    async function sendBulkEmail() {
+        if (currentFilteredEmails.length === 0) return;
+
+        // Unterscheidung PC (Outlook/Windows nutzt oft ;) vs Mobile (Komma)
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const separator = isMobile ? ',' : ';';
+        const bccList = currentFilteredEmails.join(separator);
+
+        try {
+            // 1. In die Zwischenablage kopieren (funktioniert auf PC & Mobil)
+            await navigator.clipboard.writeText(bccList);
+            showToast("Adressen kopiert & E-Mail geöffnet!");
+            
+            // 2. Mail-Programm öffnen
+            window.location.href = `mailto:?bcc=${bccList}`;
+        } catch (err) {
+            // Fallback falls Clipboard API blockiert wird
+            window.location.href = `mailto:?bcc=${bccList}`;
+            showToast("E-Mail Programm wird geöffnet...");
+        }
     }
 
     function toggleModal(id) {
@@ -340,7 +356,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         m.style.display = (m.style.display === 'block') ? 'none' : 'block';
     }
 
-    function showToast(message, duration = 2500) {
+    function showToast(message, duration = 3000) {
         const t = document.getElementById("toast");
         t.innerText = message;
         t.className = "show";
