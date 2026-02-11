@@ -103,7 +103,7 @@
             text-align: center; padding: 16px 30px; position: fixed; bottom: 50px; left: 50%; 
             transform: translateX(-50%); border-radius: 50px; z-index: 2000; font-weight: bold;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 2px solid white;
-            min-width: 200px;
+            min-width: 250px;
         }
         #toast.show { visibility: visible; }
 
@@ -146,7 +146,7 @@
             <div id="statsDisplay" class="stats-bar">
                 <span>👥</span> <span id="statsText">Berechne...</span>
             </div>
-            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Sammel-Mail schreiben</button>
+            <button id="emailAllBtn" class="btn-email-all" onclick="sendBulkEmail()">📧 Adressen kopieren</button>
             <button onclick="resetApp()" style="background:none; border:none; color:var(--nahvg-blue); text-decoration:underline; font-size:0.8rem; width:100%; cursor:pointer; margin-top:15px; opacity:0.7;">Ortsgruppe wechseln</button>
         </div>
         <div id="results"></div>
@@ -155,33 +155,15 @@
 
 <div id="infoModal" class="modal">
     <h3>System & Datenschutz</h3>
-    
     <div class="info-text">
-        <h4>🛠 Funktion</h4>
-        Dieses Tool optimiert die Verwaltung und Kommunikation innerhalb Ihrer NahVG Ortsgruppe. Nach dem Laden einer Excel-Mitgliederliste können Sie blitzschnell nach Namen, Orten oder Tätigkeiten filtern. Kontaktieren Sie Mitglieder direkt per Anruf oder nutzen Sie die Email-Funktion. Die Sammel-Mail-Funktion ermöglicht es Ihnen, alle aktuell gefilterten Personen gleichzeitig anzuschreiben.
+        <h4>🛠 Bedienung am PC</h4>
+        Klicken Sie auf das E-Mail-Symbol oder den Sammel-Button, um Adressen in die Zwischenablage zu kopieren. Sie können diese dann mit <b>Strg + V</b> in Outlook oder Gmail einfügen.
     </div>
-
-    <div class="info-text">
-        <h4>🛡 Datenschutz (Offline-First)</h4>
-        Sicherheit steht an erster Stelle. Diese Anwendung arbeitet nach dem Prinzip der <b>lokalen Verarbeitung</b>:
-        <ul>
-            <li><b>Keine Cloud-Übertragung:</b> Ihre Mitgliederdaten verlassen niemals Ihr Endgerät. Die Verarbeitung der Excel-Datei geschieht rein lokal im Browser-Arbeitsspeicher.</li>
-            <li><b>Sichere lokale Speicherung:</b> Um die Offline-Nutzung zu ermöglichen, werden die Daten verschlüsselt im Browser-Speicher (LocalStorage) abgelegt.</li>
-            <li><b>Datenhoheit:</b> Nur Sie haben Zugriff auf die geladene Datei. Mit einem Klick auf "Ortsgruppe wechseln" werden alle Daten restlos vom Gerät gelöscht.</li>
-        </ul>
-    </div>
-
-    <div class="info-text">
-        <h4>📲 Installation</h4>
-        Dank PWA-Technologie können Sie dieses System wie eine native App installieren. Nutzen Sie den Button "Als App installieren" auf der Startseite oder die Funktion "Zum Home-Bildschirm hinzufügen" in Ihrem Browser-Menü.
-    </div>
-
     <div class="dev-info">
         <b>Entwickler:</b> Marcus Hörnemann<br>
-        <b>Version:</b> 2.3.3<br>
-        <b>Status:</b> Stable Build (Lokal & Autark)
+        <b>Version:</b> 2.3.4<br>
+        <b>Status:</b> Stable Build
     </div>
-
     <button onclick="toggleModal('infoModal')" style="width:100%; padding:14px; background:var(--nahvg-blue); color:white; border-radius:8px; border:none; font-weight:bold; cursor:pointer; margin-top:10px;">Schließen</button>
 </div>
 
@@ -323,34 +305,40 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
                     </div>
                     <div class="contact-links">
                         ${tel ? `<a href="tel:${tel}">📞 Anrufen</a>` : '<span>📞 k.A.</span>'}
-                        ${email ? `<span onclick="copyAndMail('${email}')">✉️ Email</span>` : '<span>✉️ k.A.</span>'}
+                        ${email ? `<span onclick="copyToClipboard('${email}', 'Adresse kopiert!')">✉️ Kopieren</span>` : '<span>✉️ k.A.</span>'}
                     </div>
                 </div>`;
         });
     }
 
-    async function copyAndMail(email) {
+    async function copyToClipboard(text, successMsg) {
         try {
-            await navigator.clipboard.writeText(email);
-            showToast("E-Mail kopiert & geöffnet!");
-            window.location.href = `mailto:${email}`;
+            await navigator.clipboard.writeText(text);
+            showToast(successMsg);
         } catch (err) {
-            window.location.href = `mailto:${email}`;
+            // Fallback für sehr alte Browser
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showToast(successMsg);
         }
     }
 
     async function sendBulkEmail() {
         if (currentFilteredEmails.length === 0) return;
 
+        // PC nutzt meist Semikolon für Outlook, Mobil eher Komma
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const separator = isMobile ? ',' : ';';
         const bccList = currentFilteredEmails.join(separator);
 
-        try {
-            await navigator.clipboard.writeText(bccList);
-            showToast("Alle Adressen kopiert!");
-            window.location.href = `mailto:?bcc=${bccList}`;
-        } catch (err) {
+        await copyToClipboard(bccList, "Alle Adressen im Zwischenspeicher!");
+        
+        // Auf Mobilgeräten versuchen wir trotzdem das Mail-Programm zu triggern
+        if (isMobile) {
             window.location.href = `mailto:?bcc=${bccList}`;
         }
     }
@@ -360,7 +348,7 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
         m.style.display = (m.style.display === 'block') ? 'none' : 'block';
     }
 
-    function showToast(message, duration = 2500) {
+    function showToast(message, duration = 3000) {
         const t = document.getElementById("toast");
         t.innerText = message;
         t.className = "show";
